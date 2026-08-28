@@ -1,88 +1,89 @@
--- ⚠️ 검증 필요 (IMPORTANT — VERIFY BEFORE RELYING ON THIS):
--- 이 3개 쿼리는 기존 대시보드를 만들 때 썼던 조인 로직을 기억을 바탕으로 재현한 것입니다.
--- Bassip Neon DB(bassip_ai_reader 롤)의 실제 컬럼명과 100% 대조 확인된 것이 아니므로,
--- 아래 psql 명령으로 실제 스키마를 먼저 확인하고 필요하면 컬럼명을 고치세요:
---
---   psql "$NEON_DATABASE_URL" -c "\d requests"
---   psql "$NEON_DATABASE_URL" -c "\d communications"
---   psql "$NEON_DATABASE_URL" -c "\d quotes"
---   psql "$NEON_DATABASE_URL" -c "\d contracts"
---   psql "$NEON_DATABASE_URL" -c "\d cases"
---   psql "$NEON_DATABASE_URL" -c "\d case_stage_histories"
---
--- 각 쿼리는 psql -t -A -c 로 실행되어 JSON 한 줄(문자열)로 출력됩니다.
--- sync/sync.sh 가 이 파일을 3개 쿼리로 나눠서 각각 실행합니다 (-- @query: 주석으로 구분).
+-- Neon(Bassip) 추출 쿼리 — 2026-08-28 실제 스키마 대조 검증 완료 (psql로 \d 조회 + 행수 대조 확인함).
+-- sync/sync.sh 가 이 파일을 "-- @query: <name>" 마커로 구분해서 하나씩 실행합니다.
+-- 각 쿼리는 json_agg(row_to_json(t))로 JSON 배열 한 줄을 출력합니다.
 
 -- @query: funnel_rows
 select coalesce(json_agg(row_to_json(t)), '[]'::json) from (
+  with first_contact as (
+    select request_id, min(occurred_at) as at
+    from public.communications
+    where direction = 'outbound' and request_id is not null
+    group by request_id
+  ),
+  first_quote as (
+    select request_id, min(quote_date) as at
+    from public.quotes
+    where deleted_at is null
+    group by request_id
+  ),
+  req_contracts as (
+    select request_id, min(contract_date) as first_contract_at
+    from public.contracts
+    where deleted_at is null and request_id is not null
+    group by request_id
+  )
   select
-    r.id::text as id,
-    r.inquiry_at,
+    r.id,
+    r.inquiry_date as inquiry_at,
     r.category,
-    r.channel,
-    r.phase,
-    r.stage,
-    fc.first_contact_at,
-    fq.first_quote_at,
-    fco.first_contract_at,
+    r.inbound_channel::text as channel,
+    r.phase::text as phase,
+    r.stage::text as stage,
+    fc.at as first_contact_at,
+    fq.at as first_quote_at,
+    rc.first_contract_at,
     r.unqualified_reason
-  from requests r
-  left join lateral (
-    select min(c.sent_at) as first_contact_at
-    from communications c
-    where c.request_id = r.id and c.direction = 'outbound'
-  ) fc on true
-  left join lateral (
-    select min(q.created_at) as first_quote_at
-    from quotes q
-    where q.request_id = r.id
-  ) fq on true
-  left join lateral (
-    select min(ct.contract_date) as first_contract_at
-    from contracts ct
-    where ct.request_id = r.id
-  ) fco on true
-  order by r.inquiry_at
+  from public.requests r
+  left join first_contact fc on fc.request_id = r.id
+  left join first_quote fq on fq.request_id = r.id
+  left join req_contracts rc on rc.request_id = r.id
+  where r.deleted_at is null and r.inquiry_date is not null
+  order by r.inquiry_date
 ) t;
 
 -- @query: case_rows
 select coalesce(json_agg(row_to_json(t)), '[]'::json) from (
+  with first_contact as (
+    select request_id, min(occurred_at) as at
+    from public.communications
+    where direction = 'outbound' and request_id is not null
+    group by request_id
+  ),
+  first_quote as (
+    select request_id, min(quote_date) as at
+    from public.quotes
+    where deleted_at is null
+    group by request_id
+  )
   select
-    c.id::text as id,
-    c.request_id::text as request_id,
-    r.inquiry_at,
-    fc.first_contact_at,
-    fq.first_quote_at,
-    ct.contract_date,
-    c.commission_date,
-    c.filing_date as filing_official_date,
-    c.registration_date as registration_official_date,
-    c.ip_type,
-    c.category,
-    c.assignee_id
-  from cases c
-  left join contracts ct on ct.id = c.contract_id
-  left join requests r on r.id = ct.request_id
-  left join lateral (
-    select min(cm.sent_at) as first_contact_at
-    from communications cm
-    where cm.request_id = r.id and cm.direction = 'outbound'
-  ) fc on true
-  left join lateral (
-    select min(q.created_at) as first_quote_at
-    from quotes q
-    where q.request_id = r.id
-  ) fq on true
-  order by c.commission_date
+    cs.id,
+    coalesce(r.id, '') as request_id,
+    r.inquiry_date as inquiry_at,
+    fc.at as first_contact_at,
+    fq.at as first_quote_at,
+    c.contract_date,
+    cs.commission_date,
+    cs.filing_date as filing_official_date,
+    cs.registration_date as registration_official_date,
+    cs.ip_type::text as ip_type,
+    r.category,
+    cs.assignee_id
+  from public.cases cs
+  left join public.contracts c on c.id = cs.contract_id and c.deleted_at is null
+  left join public.requests r on r.id = c.request_id and r.deleted_at is null
+  left join first_contact fc on fc.request_id = r.id
+  left join first_quote fq on fq.request_id = r.id
+  where cs.deleted_at is null
+  order by cs.commission_date
 ) t;
 
 -- @query: case_stage_events
 select coalesce(json_agg(row_to_json(t)), '[]'::json) from (
   select
-    h.case_id::text as case_id,
-    h.to_stage as stage,
-    min(h.changed_at) as changed_at
-  from case_stage_histories h
-  group by h.case_id, h.to_stage
-  order by h.case_id
+    case_id,
+    to_stage as stage,
+    min(changed_at) as changed_at
+  from public.case_stage_histories
+  where to_stage is not null and deleted_at is null
+  group by case_id, to_stage
 ) t;

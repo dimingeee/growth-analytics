@@ -100,11 +100,12 @@ Danger Zone에서 확인). 그다음 **Settings → Pages** 에서:
 바로 한 번 테스트해보고 싶으면 저장소의 **Actions** 탭 → `Sync Bassip data` →
 `Run workflow` 로 수동 실행할 수 있습니다.
 
-### ⚠️ sync/neon_export.sql 은 검증이 필요합니다
+### sync/neon_export.sql 검증 완료 (2026-08-28)
 
-이 3개 쿼리는 기존 대시보드를 만들 때 확인했던 조인 로직을 기억을 바탕으로 재현한
-것이라, Neon의 실제 컬럼명과 다시 한번 대조 확인이 필요합니다. 아래처럼 실제 스키마를
-먼저 확인하세요.
+3개 쿼리 모두 실제 Neon 스키마와 대조 확인했고, `psql`로 직접 실행해서 정상적으로
+JSON을 뽑아내는 것까지 확인했습니다(문의 3,185건/사건 1,055건/단계이력 2,645건 —
+마지막 스냅샷보다 늘어난 건 그 사이 실제로 들어온 신규 데이터라 정상입니다). 그대로
+쓰면 됩니다. 스키마가 나중에 바뀌면(테이블/컬럼 추가 등) 아래로 다시 확인하세요.
 
 ```bash
 psql "$NEON_DATABASE_URL" -c "\d requests"
@@ -115,17 +116,6 @@ psql "$NEON_DATABASE_URL" -c "\d cases"
 psql "$NEON_DATABASE_URL" -c "\d case_stage_histories"
 ```
 
-컬럼명이 다르면 `sync/neon_export.sql`의 세 쿼리(`-- @query: funnel_rows` /
-`case_rows` / `case_stage_events`)를 실제 스키마에 맞게 고치고, 아래로 로컬에서
-한 번 직접 돌려서 결과를 확인해보세요.
-
-```bash
-NEON_DATABASE_URL="..." SUPABASE_DB_URL="..." bash sync/sync.sh
-```
-
-동기화 로직을 다시 Claude와 같이 확인하고 싶으면, `bassip-ai-reader` 스킬을 다시
-설치하거나 이 연결 문자열을 새 대화에 알려주면 됩니다.
-
 ## 폴더 구조
 
 ```
@@ -133,7 +123,7 @@ bassip-dashboard/
 ├── docs/index.html              대시보드 본체 (GitHub Pages가 이 폴더를 서빙)
 ├── supabase/schema.sql          테이블 + RLS 정책
 ├── supabase/seed/*.sql          초기 데이터 (현재 스냅샷)
-├── sync/neon_export.sql         Neon에서 뽑는 3개 쿼리 (검증 필요, 위 참고)
+├── sync/neon_export.sql         Neon에서 뽑는 3개 쿼리 (검증 완료)
 ├── sync/sync.sh                 Neon → Supabase 동기화 스크립트
 └── .github/workflows/sync-data.yml   매일 자동 실행 워크플로
 ```
