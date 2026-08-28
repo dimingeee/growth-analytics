@@ -24,11 +24,15 @@ GitHub Pages (docs/index.html) — 매 접속마다 Supabase에서 fetch
 
 1. https://supabase.com/dashboard 에서 New Project 생성 (리전은 서울과 가까운 곳 추천)
 2. 프로젝트가 만들어지면 **Settings → API** 에서 다음 두 값을 복사해둡니다.
-   - `Project URL` (예: `https://abcdxyz.supabase.co`)
-   - `anon public` key
+   - `Project URL` (예: `https://abcdxyz.supabase.co`) 
+https://blkelwmejqlofvplrfvp.supabase.co
+   - `anon public` key 
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsa2Vsd21lanFsb2Z2cGxyZnZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4NjU4NjMsImV4cCI6MjEwMzQ0MTg2M30.ieS6WGi1qHgFgJG7C58UWI5Hx1L0ui-lEk9lGiXuZDg
+
 3. **Settings → Database → Connection string** 에서 `URI` 형식의 연결 문자열을 복사해둡니다.
    (이게 `SUPABASE_DB_URL` — service_role 이 아니라 DB 자체 접속 문자열입니다. 비밀번호는
    프로젝트 생성 시 설정한 DB 비밀번호입니다.)
+postgresql://postgres:[YOUR-PASSWORD]@db.blkelwmejqlofvplrfvp.supabase.co:5432/postgres
 
 ## 2. 스키마 + 초기 데이터 넣기
 
