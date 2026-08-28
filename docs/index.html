@@ -66,7 +66,7 @@
   .filters-sidebar {
     flex: 0 0 300px; position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto;
     display: flex; flex-direction: column; gap: 22px;
-    padding: 4px 4px 20px;
+    background: var(--accent-tint); border: 1px solid var(--border); border-radius: 12px; padding: 20px 16px;
   }
   .main-content { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 30px; }
   #viewDashboard, #viewSingle, #viewCompare { display: flex; flex-direction: column; gap: 26px; }
@@ -231,6 +231,15 @@
   .line-point:focus { outline: none; }
   .line-value-label { position: absolute; left: 50%; top: -19px; transform: translateX(-50%); font-size: 11px; font-weight: 700; color: var(--accent-ink); white-space: nowrap; pointer-events: none; }
 
+  /* donut (part-to-whole) + legend */
+  .donut-wrap { position: relative; width: 168px; height: 168px; margin: 4px auto 6px; }
+  .donut-svg { width: 100%; height: 100%; }
+  .donut-seg { transition: opacity .12s ease; }
+  .donut-seg:hover { opacity: .82; }
+  .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+  .donut-center-value { font-size: 22px; font-weight: 800; color: var(--ink); line-height: 1; }
+  .donut-center-label { font-size: 11px; color: var(--ink-3); margin-top: 3px; }
+
   /* stacked bar (part-to-whole) + legend */
   .stacked-bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; gap: 2px; background: var(--surface-2); }
   .stacked-seg { position: relative; min-width: 3px; }
@@ -307,8 +316,8 @@
   <div class="layout">
   <aside class="filters-sidebar">
     <div class="nav-links" id="sectionSeg">
-      <button data-section="dashboard" class="active">📊 대시보드</button>
-      <button data-section="stats">📈 통계</button>
+      <button data-section="dashboard" class="active">대시보드</button>
+      <button data-section="stats">통계</button>
     </div>
 
     <div id="statsNavExtra" style="display:none;">
@@ -414,7 +423,7 @@
 
   <div id="statsContent" style="display:none;">
   <div style="display:flex; justify-content:flex-end;">
-    <button class="btn-download" id="downloadBtn">📥 데이터 다운로드</button>
+    <button class="btn-download" id="downloadBtn">데이터 다운로드</button>
   </div>
   <div id="viewSingle">
     <section class="kpi-grid" id="kpiGrid"></section>
@@ -492,7 +501,7 @@
   </div>
 
   <div style="text-align:right;">
-    <button type="button" id="dataNotesToggle" class="link-toggle">⚠️ 이 스냅샷을 읽을 때 참고할 점 보기</button>
+    <button type="button" id="dataNotesToggle" class="link-toggle">이 스냅샷을 읽을 때 참고할 점 보기</button>
   </div>
   <section class="callout" id="dataNotesCallout" style="display:none;">
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -830,6 +839,45 @@ function initDashboard() {
     container.innerHTML = '<div class="stacked-bar">' + segHtml + '</div><div class="chart-legend">' + legendHtml + '</div>';
   }
 
+  function renderDonutChart(container, opts) {
+    var n = opts.values.length;
+    if (!n) { container.innerHTML = '<div class="empty-state">데이터가 없습니다.</div>'; return; }
+    var MAXSLOT = 8;
+    var shown = Math.min(n, MAXSLOT);
+    var r = 40, cx = 50, cy = 50, sw = 16;
+    var circ = 2 * Math.PI * r;
+    var offset = 0;
+    var segSvg = '', legendHtml = '', otherSum = 0, otherCount = 0;
+    for (var i = 0; i < n; i++) {
+      if (i < shown) {
+        var colorVar = 'var(--series-' + (i + 1) + ')';
+        var pct = Math.max(opts.values[i], 0);
+        var len = circ * pct / 100;
+        segSvg += '<circle class="donut-seg" cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + colorVar + '" stroke-width="' + sw + '" ' +
+          'stroke-dasharray="' + len.toFixed(2) + ' ' + (circ - len).toFixed(2) + '" stroke-dashoffset="' + (-offset).toFixed(2) + '"><title>' + opts.tooltips[i] + '</title></circle>';
+        offset += len;
+        legendHtml += '<div class="legend-item"><span class="legend-swatch" style="background:' + colorVar + ';"></span>' +
+          '<span>' + opts.labels[i].main + '</span>' +
+          '<span class="legend-value font-mono">' + opts.valueLabels[i] + '</span></div>';
+      } else {
+        otherSum += opts.values[i]; otherCount++;
+      }
+    }
+    if (otherCount) {
+      var len2 = circ * otherSum / 100;
+      segSvg += '<circle class="donut-seg" cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--ink-3)" stroke-width="' + sw + '" ' +
+        'stroke-dasharray="' + len2.toFixed(2) + ' ' + (circ - len2).toFixed(2) + '" stroke-dashoffset="' + (-offset).toFixed(2) + '"><title>기타(' + otherCount + ') · ' + otherSum.toFixed(1) + '%</title></circle>';
+      legendHtml += '<div class="legend-item"><span class="legend-swatch" style="background:var(--ink-3);"></span>' +
+        '<span>기타</span><span class="legend-value font-mono">' + otherSum.toFixed(0) + '%</span></div>';
+    }
+    container.innerHTML =
+      '<div class="donut-wrap"><svg viewBox="0 0 100 100" class="donut-svg">' +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--surface-2)" stroke-width="' + sw + '"/>' +
+      '<g transform="rotate(-90 ' + cx + ' ' + cy + ')">' + segSvg + '</g></svg>' +
+      '<div class="donut-center"><div class="donut-center-value font-mono">' + (opts.total != null ? opts.total.toLocaleString() : '') + '</div><div class="donut-center-label">' + (opts.totalLabel || '건') + '</div></div></div>' +
+      '<div class="chart-legend">' + legendHtml + '</div>';
+  }
+
   function groupKey(date, gran) {
     var y = date.getUTCFullYear(), m = date.getUTCMonth();
     if (gran === 'year') return String(y);
@@ -1009,7 +1057,7 @@ function initDashboard() {
     var sparkVals = sparkOrder.map(function (k) { return sparkGroups[k]; });
 
     var heroHtml = '<div class="kpi-hero-main">' +
-      '<div class="kpi-label">✍️ 이번 달 신규 계약</div>' +
+      '<div class="kpi-label">이번 달 신규 계약</div>' +
       '<div class="kpi-value font-mono">' + contractsThis.toLocaleString() + '건</div>' +
       deltaHtml(contractsDelta) +
       '</div>' +
@@ -1018,10 +1066,10 @@ function initDashboard() {
     renderSparkline(document.getElementById('dashHeroSpark'), sparkVals);
 
     var kpiHtml = '';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">📥 이번 달 신규 문의 (누적)</div><div class="kpi-value font-mono">' + inqThis.toLocaleString() + '건</div>' + deltaHtml(inqDelta) + '</div>';
-    kpiHtml += '<div class="kpi highlight"><div class="kpi-label">🎯 문의 → 계약 전환율</div><div class="kpi-value font-mono">' + convFunnel.rate.toFixed(1) + '%</div><div class="kpi-sub">최근 3개월 · n=' + convFunnel.total.toLocaleString() + '</div></div>';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">📁 진행중인 사건</div><div class="kpi-value font-mono">' + inProgressCases.toLocaleString() + '건</div><div class="kpi-sub">수임 이후 · 등록 전 (근사치)</div></div>';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">⏱️ 평균 첫 연락 소요일수</div><div class="kpi-value font-mono">' + (contactFunnel.avg != null ? contactFunnel.avg.toFixed(1) + '일' : '—') + '</div><div class="kpi-sub">최근 3개월 · 발신 기록 기준</div></div>';
+    kpiHtml += '<div class="kpi"><div class="kpi-label">이번 달 신규 문의 (누적)</div><div class="kpi-value font-mono">' + inqThis.toLocaleString() + '건</div>' + deltaHtml(inqDelta) + '</div>';
+    kpiHtml += '<div class="kpi highlight"><div class="kpi-label">문의 → 계약 전환율</div><div class="kpi-value font-mono">' + convFunnel.rate.toFixed(1) + '%</div><div class="kpi-sub">최근 3개월 · n=' + convFunnel.total.toLocaleString() + '</div></div>';
+    kpiHtml += '<div class="kpi"><div class="kpi-label">진행중인 사건</div><div class="kpi-value font-mono">' + inProgressCases.toLocaleString() + '건</div><div class="kpi-sub">수임 이후 · 등록 전 (근사치)</div></div>';
+    kpiHtml += '<div class="kpi"><div class="kpi-label">평균 첫 연락 소요일수</div><div class="kpi-value font-mono">' + (contactFunnel.avg != null ? contactFunnel.avg.toFixed(1) + '일' : '—') + '</div><div class="kpi-sub">최근 3개월 · 발신 기록 기준</div></div>';
     document.getElementById('dashKpiGrid').innerHTML = kpiHtml;
 
     var start12 = monthStart(addMonthsUTC(now, -11));
@@ -1085,14 +1133,16 @@ function initDashboard() {
       if (!k) return;
       counts[k] = (counts[k] || 0) + 1;
     });
-    var keys = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; });
     var total = rows.length;
+    var keys = Object.keys(counts)
+      .filter(function (k) { return total && (counts[k] / total * 100) >= 0.5; })
+      .sort(function (a, b) { return counts[b] - counts[a]; });
     var labels = keys.map(function (k) { return { main: (labelMap && labelMap[k]) || k, sub: '' }; });
     var values = keys.map(function (k) { return total ? counts[k] / total * 100 : 0; });
     var valueLabels = values.map(function (v) { return v.toFixed(0) + '%'; });
     var tooltips = keys.map(function (k) { return ((labelMap && labelMap[k]) || k) + ' · ' + counts[k].toLocaleString() + '건'; });
     if (!keys.length) { container.innerHTML = '<div class="empty-state">데이터가 없습니다.</div>'; return; }
-    renderStackedBarChart(container, { values: values, labels: labels, valueLabels: valueLabels, tooltips: tooltips, unit: '%' });
+    renderDonutChart(container, { values: values, labels: labels, valueLabels: valueLabels, tooltips: tooltips, total: total, totalLabel: '건' });
   }
 
   function renderAll() {
@@ -1402,7 +1452,7 @@ function initDashboard() {
     var box = document.getElementById('dataNotesCallout');
     var open = box.style.display !== 'none';
     box.style.display = open ? 'none' : 'flex';
-    this.textContent = (open ? '⚠️ 이 스냅샷을 읽을 때 참고할 점 보기' : '⚠️ 참고할 점 접기');
+    this.textContent = (open ? '이 스냅샷을 읽을 때 참고할 점 보기' : '참고할 점 접기');
   });
 
   populateStageSelects();
