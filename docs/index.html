@@ -1,3 +1,4 @@
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
 <style>
   :root {
     --bg: #F3F5F8; --surface: #FFFFFF; --surface-2: #EDF0F4; --border: #DFE3E9;
@@ -5,8 +6,8 @@
     --accent: #3E5C8A; --accent-ink: #253E64; --accent-tint: #EEF2F8;
     --highlight: #7C6A9C; --highlight-ink: #4F4370; --highlight-tint: #F1EEF6;
     --warn: #B7791F; --warn-ink: #6B4712; --warn-tint: #FBF1DF; --brick: #B2483C;
-    --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
-    --series-5: #e87ba4; --series-6: #008300; --series-7: #4a3aa7; --series-8: #e34948;
+    --series-1: #4E76A8; --series-2: #C9784F; --series-3: #4E9E82; --series-4: #C99A3D;
+    --series-5: #C77E97; --series-6: #5C8A5C; --series-7: #6E5D96; --series-8: #B25C58;
     --shadow: 0 1px 2px rgba(20, 26, 36, 0.06), 0 8px 24px -12px rgba(20, 26, 36, 0.12);
   }
   @media (prefers-color-scheme: dark) {
@@ -16,8 +17,8 @@
       --accent: #7C97C0; --accent-ink: #CBD7E8; --accent-tint: #1D2733;
       --highlight: #9C8FB3; --highlight-ink: #DCD4E8; --highlight-tint: #241F2E;
       --warn: #E0A94A; --warn-ink: #F5DBA6; --warn-tint: #362A13; --brick: #D9776C;
-      --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
-      --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
+      --series-1: #6E93BE; --series-2: #D89A72; --series-3: #7CBFA0; --series-4: #D9BC6E;
+      --series-5: #D9A0B6; --series-6: #86AD86; --series-7: #9686BE; --series-8: #CC8A87;
       --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
     }
   }
@@ -46,14 +47,14 @@
   html, body { background: var(--bg); }
   body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
     color: var(--ink);
     line-height: 1.5;
   }
   .page { max-width: 100%; margin: 0; padding: 40px 40px 64px; display: flex; flex-direction: column; gap: 30px; }
-  .font-head { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
-  .font-mono { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; font-variant-numeric: tabular-nums; }
-  code.k { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; background: var(--surface-2); padding: 1px 5px; border-radius: 3px; font-size: .93em; }
+  .font-head { font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
+  .font-mono { font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; font-variant-numeric: tabular-nums; }
+  code.k { font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; background: var(--surface-2); padding: 1px 5px; border-radius: 3px; font-size: .93em; }
 
   header { display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
   .eyebrow { font-size: 12.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-ink); font-weight: 600; }
@@ -65,22 +66,23 @@
   .filters-sidebar {
     flex: 0 0 300px; position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto;
     display: flex; flex-direction: column; gap: 22px;
-    background: var(--accent-tint); border: 1px solid var(--border); border-radius: 10px; padding: 20px 16px;
+    padding: 4px 4px 20px;
   }
   .main-content { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 30px; }
   #viewDashboard, #viewSingle, #viewCompare { display: flex; flex-direction: column; gap: 26px; }
 
   /* primary + sub nav (left rail) */
-  .nav-links { display: flex; flex-direction: column; gap: 4px; }
+  .nav-links { display: flex; flex-direction: column; gap: 2px; }
   .nav-links button {
     appearance: none; border: none; background: transparent; color: var(--ink-2); width: 100%;
-    font-size: 14.5px; font-weight: 700; font-family: inherit; text-align: left; cursor: pointer;
-    padding: 10px 14px; border-radius: 8px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px; font-weight: 600; font-family: inherit; text-align: left; cursor: pointer;
+    padding: 9px 12px; border-radius: 8px;
   }
-  .nav-links button:hover { background: var(--surface); }
-  .nav-links button.active { background: var(--accent); color: #fff; }
-  .nav-links.nav-sub { padding-top: 10px; border-top: 1px solid var(--border); }
-  .nav-links.nav-sub button:hover { background: rgba(255,255,255,.6); }
+  .nav-links button:hover { background: var(--surface-2); }
+  .nav-links button.active { background: var(--accent-tint); color: var(--accent-ink); font-weight: 700; }
+  .nav-links.nav-sub { padding-top: 10px; margin-top: 6px; border-top: 1px solid var(--border); }
+  .nav-links.nav-sub button:hover { background: var(--surface-2); }
   .nav-links.nav-sub button.active { background: var(--surface); color: var(--accent-ink); box-shadow: var(--shadow); }
   .nav-links.nav-sub button { font-size: 13px; font-weight: 600; padding: 8px 12px; }
 
@@ -298,8 +300,8 @@
 <div class="page">
 
   <header>
-    <div class="eyebrow font-mono">Bassip · Growth Analytics · 매일 자동 갱신</div>
-    <h1 class="font-head">성장 현황판</h1>
+    <div class="eyebrow font-mono">BASSIP · 매일 자동 갱신</div>
+    <h1 class="font-head">Growth Analytics</h1>
   </header>
 
   <div class="layout">
