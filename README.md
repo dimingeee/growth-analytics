@@ -1,6 +1,6 @@
 # Bassip 그로스해킹 대시보드
 
-Neon(Bassip)의 데이터를 Supabase로 매일 동기화하고, GitHub Pages로 배포된 대시보드가
+Neon(Bassip)의 데이터를 Supabase로 매일 동기화하고, Vercel로 배포된 대시보드가
 페이지를 열 때마다 Supabase에서 실시간으로 데이터를 불러옵니다. 실제 의뢰인 데이터가
 들어있으므로 대시보드 페이지 자체에 로그인(Supabase Auth)이 걸려 있습니다.
 
@@ -11,12 +11,17 @@ Neon (bassip_ai_reader, 원본)
 Supabase Postgres (읽기 전용 미러 + RLS)
    │  로그인한 사용자만 조회 가능
    ▼
-GitHub Pages (docs/index.html) — 매 접속마다 Supabase에서 fetch
+Vercel (docs/index.html 배포) — 매 접속마다 Supabase에서 fetch
 ```
+
+> GitHub Pages는 개인 계정 Free 플랜에서는 **Private 저장소에 못 켭니다** (Pro 이상만
+> 가능). 그래서 Vercel로 배포합니다 — Private 저장소도 그대로 연결되고, 무료 플랜으로
+> 충분합니다.
 
 ## 0. 준비물
 
 - GitHub 계정, **Private** 저장소로 이 폴더를 push
+- Vercel 계정 (무료 플랜으로 충분, GitHub 계정으로 바로 가입 가능) — https://vercel.com
 - Supabase 계정 (무료 플랜으로 충분) — https://supabase.com
 - Neon(bassip_ai_reader) 연결 문자열 — 이전에 psql로 접속할 때 쓰던 그 문자열
 
@@ -68,29 +73,31 @@ var SUPABASE_ANON_KEY = 'YOUR-ANON-PUBLIC-KEY';
 `anon` 키는 브라우저 소스에 그대로 노출되지만, RLS 정책이 "로그인한 사용자만 조회"로
 막고 있어서 로그인하지 않은 사람은 이 키만으로는 데이터를 하나도 읽을 수 없습니다.
 
-## 5. GitHub에 올리고 Pages 켜기
+## 5. GitHub에 올리고 Vercel로 배포하기
 
-```bash
-cd bassip-dashboard
-git init
-git add .
-git commit -m "Bassip 대시보드 초기 구성"
-git branch -M main
-git remote add origin https://github.com/<your-account>/<repo-name>.git
-git push -u origin main
-```
+이미 GitHub Private 저장소에 push가 끝났다면 이 단계는 건너뛰고 아래 Vercel 설정만
+하면 됩니다.
 
-GitHub에서 저장소를 **Private**로 만드세요 (이미 만들어져 있다면 Settings → General →
-Danger Zone에서 확인). 그다음 **Settings → Pages** 에서:
-- Source: `Deploy from a branch`
-- Branch: `main` / `/docs`
+1. https://vercel.com 에서 **GitHub 계정으로 로그인**합니다.
+2. 대시보드에서 **Add New... → Project**를 누릅니다.
+3. 처음이면 GitHub 연동 권한을 요청하는 화면이 뜹니다 — "Only select repositories"를
+   골라서 `growth-analytics` 저장소만 접근 허용해도 됩니다(Private 저장소도 문제없이
+   선택 가능합니다).
+4. 저장소 목록에서 `growth-analytics`를 찾아 **Import**를 누릅니다.
+5. "Configure Project" 화면에서 아래처럼 설정합니다.
+   - **Framework Preset**: `Other` (자동 인식 안 되면 이걸로 직접 선택)
+   - **Root Directory**: `Edit` 버튼을 눌러 **`docs`** 로 지정 (이게 제일 중요합니다 —
+     대시보드 파일이 저장소 최상위가 아니라 `docs/` 폴더 안에 있기 때문입니다)
+   - **Build Command**, **Output Directory**: 비워두거나 기본값 그대로 (빌드 과정이
+     없는 순수 정적 HTML이라 손댈 필요 없음)
+6. **Deploy** 클릭 → 1~2분 뒤 `https://growth-analytics-<random>.vercel.app` 같은
+   주소로 배포가 끝납니다. 이후 `main`에 새로 push할 때마다 Vercel이 자동으로
+   재배포합니다.
 
-로 설정하면 몇 분 뒤 `https://<your-account>.github.io/<repo-name>/` 에서 대시보드가 뜹니다.
-
-> ⚠️ **중요**: Private 저장소여도 GitHub Pages로 배포하면 **그 배포 URL 자체는 링크를 아는
-> 사람이면 누구나 열립니다** (GitHub Enterprise Cloud가 아닌 이상). 그래서 4번에서 만든
-> 로그인 화면이 실제 접근 제한 역할을 합니다 — 반드시 3번(회원가입 차단 + 계정 직접 생성)을
-> 건너뛰지 마세요.
+> ⚠️ **중요**: Private 저장소를 연결해도 **Vercel 배포 URL 자체는 링크를 아는 사람이면
+> 누구나 열립니다** (GitHub Pages와 마찬가지 — Vercel의 비밀번호 보호 기능은 유료
+> 플랜 전용입니다). 그래서 4번에서 만든 로그인 화면이 실제 접근 제한 역할을 합니다 —
+> 반드시 3번(회원가입 차단 + 계정 직접 생성)을 건너뛰지 마세요.
 
 ## 6. 매일 자동 동기화 (GitHub Actions)
 
@@ -124,7 +131,7 @@ psql "$NEON_DATABASE_URL" -c "\d case_stage_histories"
 
 ```
 bassip-dashboard/
-├── docs/index.html              대시보드 본체 (GitHub Pages가 이 폴더를 서빙)
+├── docs/index.html              대시보드 본체 (Vercel Root Directory = docs)
 ├── supabase/schema.sql          테이블 + RLS 정책
 ├── supabase/seed/*.sql          초기 데이터 (현재 스냅샷)
 ├── sync/neon_export.sql         Neon에서 뽑는 3개 쿼리 (검증 완료)
