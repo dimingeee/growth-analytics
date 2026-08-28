@@ -140,6 +140,24 @@
   @media (max-width: 600px) {
     .kpi-grid-dash { grid-template-columns: repeat(2, 1fr); }
   }
+
+  /* hero kpi (north-star metric) */
+  .kpi-hero {
+    background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--highlight);
+    border-radius: 10px; box-shadow: var(--shadow); padding: 22px 28px;
+    display: flex; align-items: center; justify-content: space-between; gap: 28px; flex-wrap: wrap;
+  }
+  .kpi-hero .kpi-hero-main { display: flex; flex-direction: column; gap: 6px; min-width: 200px; }
+  .kpi-hero .kpi-label { font-size: 13px; color: var(--ink-2); font-weight: 700; }
+  .kpi-hero .kpi-value { font-size: 52px; font-weight: 800; letter-spacing: -0.02em; color: var(--highlight-ink); line-height: 1; }
+  .kpi-hero .kpi-sub { font-size: 13px; color: var(--ink-3); margin-top: 2px; }
+  .kpi-hero .kpi-spark-wrap { flex: 1 1 240px; max-width: 320px; display: flex; flex-direction: column; gap: 4px; }
+  .kpi-hero .kpi-spark { width: 100%; height: 64px; }
+  .kpi-hero .kpi-spark-label { font-size: 11.5px; color: var(--ink-3); text-align: right; }
+  @media (max-width: 760px) {
+    .kpi-hero { flex-direction: column; align-items: flex-start; }
+    .kpi-hero .kpi-spark-wrap { max-width: none; width: 100%; }
+  }
   .dash-mini-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
   @media (max-width: 900px) {
     .dash-mini-grid { grid-template-columns: 1fr; }
@@ -281,7 +299,7 @@
 
   <header>
     <div class="eyebrow font-mono">Bassip · Growth Analytics · 매일 자동 갱신</div>
-    <h1 class="font-head">문의 → 계약 → 출원 퍼널 대시보드</h1>
+    <h1 class="font-head">성장 현황판</h1>
   </header>
 
   <div class="layout">
@@ -354,7 +372,8 @@
       <h2 class="font-head">이번 달 한눈에 보기</h2>
       <p id="dashSubtitle" class="subtitle"></p>
     </div>
-    <section class="kpi-grid kpi-grid-dash" id="dashKpiGrid"></section>
+    <section class="kpi-hero" id="dashKpiHero"></section>
+    <section class="kpi-grid" id="dashKpiGrid"></section>
 
     <section class="card">
       <div class="card-head">
@@ -976,11 +995,30 @@ function initDashboard() {
     var contractsPrev = REQ.filter(function (r) { var d = parseISO(r[REQ_IDX.contract]); return d && d.getTime() >= prevMonthStart.getTime() && d.getTime() <= prevMonthSameDayEnd.getTime(); }).length;
     var contractsDelta = contractsPrev ? ((contractsThis - contractsPrev) / contractsPrev * 100) : null;
 
+    var spark6Start = monthStart(addMonthsUTC(now, -5));
+    var sparkGroups = {}, sparkOrder = [];
+    for (var si = 0; si < 6; si++) { var smk = groupKey(addMonthsUTC(spark6Start, si), 'month'); sparkGroups[smk] = 0; sparkOrder.push(smk); }
+    REQ.forEach(function (r) {
+      var d = parseISO(r[REQ_IDX.contract]);
+      if (!d || d.getTime() < spark6Start.getTime()) return;
+      var mk = groupKey(d, 'month');
+      if (sparkGroups[mk] !== undefined) sparkGroups[mk]++;
+    });
+    var sparkVals = sparkOrder.map(function (k) { return sparkGroups[k]; });
+
+    var heroHtml = '<div class="kpi-hero-main">' +
+      '<div class="kpi-label">✍️ 이번 달 신규 계약</div>' +
+      '<div class="kpi-value font-mono">' + contractsThis.toLocaleString() + '건</div>' +
+      deltaHtml(contractsDelta) +
+      '</div>' +
+      '<div class="kpi-spark-wrap"><div class="kpi-spark" id="dashHeroSpark"></div><div class="kpi-spark-label">최근 6개월 추이</div></div>';
+    document.getElementById('dashKpiHero').innerHTML = heroHtml;
+    renderSparkline(document.getElementById('dashHeroSpark'), sparkVals);
+
     var kpiHtml = '';
     kpiHtml += '<div class="kpi"><div class="kpi-label">📥 이번 달 신규 문의 (누적)</div><div class="kpi-value font-mono">' + inqThis.toLocaleString() + '건</div>' + deltaHtml(inqDelta) + '</div>';
     kpiHtml += '<div class="kpi highlight"><div class="kpi-label">🎯 문의 → 계약 전환율</div><div class="kpi-value font-mono">' + convFunnel.rate.toFixed(1) + '%</div><div class="kpi-sub">최근 3개월 · n=' + convFunnel.total.toLocaleString() + '</div></div>';
     kpiHtml += '<div class="kpi"><div class="kpi-label">📁 진행중인 사건</div><div class="kpi-value font-mono">' + inProgressCases.toLocaleString() + '건</div><div class="kpi-sub">수임 이후 · 등록 전 (근사치)</div></div>';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">✍️ 이번 달 신규 계약 (누적)</div><div class="kpi-value font-mono">' + contractsThis.toLocaleString() + '건</div>' + deltaHtml(contractsDelta) + '</div>';
     kpiHtml += '<div class="kpi"><div class="kpi-label">⏱️ 평균 첫 연락 소요일수</div><div class="kpi-value font-mono">' + (contactFunnel.avg != null ? contactFunnel.avg.toFixed(1) + '일' : '—') + '</div><div class="kpi-sub">최근 3개월 · 발신 기록 기준</div></div>';
     document.getElementById('dashKpiGrid').innerHTML = kpiHtml;
 
@@ -997,6 +1035,25 @@ function initDashboard() {
     renderDistributionChart(document.getElementById('dashIpChart'), REQ, function (r) { return r[REQ_IDX.category]; }, IP_LABELS);
     renderDistributionChart(document.getElementById('dashChannelChart'), REQ, function (r) { return r[REQ_IDX.channel]; }, CHANNEL_LABELS);
     renderDistributionChart(document.getElementById('dashPhaseChart'), REQ, function (r) { return r[REQ_IDX.phase]; }, DASH_PHASE_LABELS);
+  }
+
+  function renderSparkline(container, values) {
+    var w = 280, h = 64, pad = 4;
+    var max = Math.max.apply(null, values.concat([1]));
+    var min = Math.min.apply(null, values.concat([0]));
+    var range = (max - min) || 1;
+    var stepX = (w - pad * 2) / Math.max(values.length - 1, 1);
+    var pts = values.map(function (v, i) {
+      var x = pad + i * stepX;
+      var y = h - pad - ((v - min) / range) * (h - pad * 2);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    });
+    var last = pts[pts.length - 1].split(',');
+    container.innerHTML =
+      '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="width:100%;height:100%;overflow:visible;">' +
+      '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--highlight)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>' +
+      '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="4" fill="var(--highlight)"/>' +
+      '</svg>';
   }
 
   function renderMonthlyChart(container, rows, getDateStr, start12) {
