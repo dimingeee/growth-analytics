@@ -354,6 +354,50 @@
   .status-insights { display: flex; flex-direction: column; gap: 5px; margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--border); }
   .status-insight-line { font-size: 13px; color: var(--ink-2); }
   .status-insight-line b { color: var(--ink); }
+  #timeToContractInsight, #unqualInsight { margin-top: 14px; padding-top: 14px; }
+
+  /* contact-speed highlight (24h 이내 vs 이후) */
+  .cs-compare { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 18px; margin-bottom: 20px; }
+  .cs-box { border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; text-align: center; }
+  .cs-box.good { border-left: 4px solid var(--accent); }
+  .cs-box.bad { border-left: 4px solid var(--brick); }
+  .cs-box-label { font-size: 12.5px; color: var(--ink-2); font-weight: 600; margin-bottom: 6px; }
+  .cs-box-value { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .cs-box-sub { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+  .cs-vs { font-size: 13px; font-weight: 700; color: var(--ink-3); }
+  .cs-diff-line { text-align: center; font-size: 14px; margin-bottom: 18px; padding: 10px 14px; border-radius: 8px; background: var(--warn-tint); color: var(--warn-ink); font-weight: 600; }
+  .cs-diff-line.flat { background: var(--surface-2); color: var(--ink-2); }
+  @media (max-width: 700px) { .cs-compare { grid-template-columns: 1fr; } .cs-vs { display: none; } }
+
+  /* funnel steps */
+  .funnel-step { display: grid; grid-template-columns: 140px 1fr 90px 90px 110px; align-items: center; gap: 12px; padding: 10px 4px; border-radius: 8px; }
+  .funnel-step:hover { background: var(--surface-2); }
+  .funnel-step-name { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+  .funnel-step-track { position: relative; height: 22px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
+  .funnel-step-fill { position: absolute; top: 0; left: 0; height: 100%; background: var(--accent); border-radius: 5px; }
+  .funnel-step-fill.leak { background: var(--brick); }
+  .funnel-step-count { font-size: 13px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+  .funnel-step-rate { font-size: 12.5px; color: var(--ink-2); text-align: right; font-variant-numeric: tabular-nums; }
+  .funnel-step-days { font-size: 12px; color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
+  .funnel-head { display: grid; grid-template-columns: 140px 1fr 90px 90px 110px; gap: 12px; padding: 0 4px 6px; font-size: 11px; color: var(--ink-3); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+  .funnel-head span:not(:first-child) { text-align: right; }
+  @media (max-width: 700px) {
+    .funnel-step, .funnel-head { grid-template-columns: 90px 1fr 70px; }
+    .funnel-step-rate, .funnel-head span:nth-child(4) { display: none; }
+  }
+
+  /* action center */
+  .action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .action-card {
+    border: 1px solid var(--border); border-radius: 10px; padding: 15px 16px; display: flex; flex-direction: column; gap: 6px;
+    cursor: pointer; text-align: left; font-family: inherit; appearance: none; background: var(--surface);
+  }
+  .action-card:hover { filter: brightness(0.98); }
+  .action-card.hot { border-left: 4px solid var(--brick); background: color-mix(in srgb, var(--brick) 7%, var(--surface)); }
+  .action-card.warn { border-left: 4px solid var(--warn); background: var(--warn-tint); }
+  .action-card-label { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .action-card-value { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .action-card-desc { font-size: 12px; color: var(--ink-3); }
 </style>
 
 
@@ -506,6 +550,55 @@
         <button type="button" class="link-toggle" id="statusDrillClose">닫기</button>
       </div>
       <div class="table-scroll"><table id="statusDrillTable"></table></div>
+    </section>
+
+    <section class="card" id="contactSpeedCard">
+      <div class="card-head">
+        <div>
+          <div class="card-title">첫 연락이 늦으면 계약률이 떨어지나?</div>
+          <div class="card-title-sub" id="contactSpeedSub"></div>
+        </div>
+      </div>
+      <div id="contactSpeedHighlight"></div>
+      <div class="table-scroll"><table id="contactSpeedTable"></table></div>
+    </section>
+
+    <section class="card" id="timeToContractCard">
+      <div class="card-head">
+        <div>
+          <div class="card-title">계약된 문의는 보통 며칠 만에 계약되나?</div>
+          <div class="card-title-sub" id="timeToContractSub"></div>
+        </div>
+      </div>
+      <div id="timeToContractChart"></div>
+      <div class="status-insights" id="timeToContractInsight"></div>
+    </section>
+
+    <section class="card" id="funnelCard">
+      <div class="card-head">
+        <div>
+          <div class="card-title">문의는 계약까지 어디서 가장 많이 이탈하나?</div>
+          <div class="card-title-sub" id="funnelSub">문의 접수 → 첫 연락 → 첫 견적 → 계약 (상담 진입은 신뢰 가능한 시각 기록이 없어 퍼널에서 제외)</div>
+        </div>
+      </div>
+      <div id="funnelSteps"></div>
+    </section>
+
+    <section class="card" id="unqualCard">
+      <div class="card-head">
+        <div>
+          <div class="card-title">왜 계약되지 못했나?</div>
+          <div class="card-title-sub" id="unqualSub"></div>
+        </div>
+      </div>
+      <div class="kpi-grid kpi-grid-sm" id="unqualKpi"></div>
+      <div id="unqualReasonBars"></div>
+      <div class="status-insights" id="unqualInsight"></div>
+    </section>
+
+    <section class="card status-card" id="actionCenterCard">
+      <div class="status-block-title">지금 무엇을 해야 하나? <span class="status-period-label">· 현재 시점 전체</span></div>
+      <div id="actionCenterGrid" class="action-grid"></div>
     </section>
 
     <section class="card">
@@ -1156,6 +1249,26 @@ function initDashboard() {
     delayed_response: '연락 지연', no_response: '고객 무응답', cost: '가격', other: '기타',
     trademark: '상표(취급 범위 밖)', design: '디자인(취급 범위 밖)'
   };
+  var IMPROVABLE_REASONS = ['delayed_response', 'cost'];
+  var UNCONTROLLABLE_REASONS = ['no_response', 'trademark', 'design'];
+  var CONTACT_SPEED_BUCKETS = [
+    { key: 'h1', label: '1시간 이내', max: 1 }, { key: 'h3', label: '1~3시간', max: 3 },
+    { key: 'h6', label: '3~6시간', max: 6 }, { key: 'h12', label: '6~12시간', max: 12 },
+    { key: 'h24', label: '12~24시간', max: 24 }, { key: 'over24', label: '24시간 이상', max: Infinity }
+  ];
+  function contactBucketFor(hours) {
+    for (var i = 0; i < CONTACT_SPEED_BUCKETS.length; i++) if (hours <= CONTACT_SPEED_BUCKETS[i].max) return CONTACT_SPEED_BUCKETS[i];
+    return CONTACT_SPEED_BUCKETS[CONTACT_SPEED_BUCKETS.length - 1];
+  }
+  var CONTRACT_DAY_BUCKETS = [
+    { key: 'd0', label: '당일', max: 1 }, { key: 'd3', label: '1~3일', max: 3 },
+    { key: 'd7', label: '4~7일', max: 7 }, { key: 'd14', label: '8~14일', max: 14 },
+    { key: 'd30', label: '15~30일', max: 30 }, { key: 'd30p', label: '30일 이상', max: Infinity }
+  ];
+  function dayBucketFor(d) {
+    for (var i = 0; i < CONTRACT_DAY_BUCKETS.length; i++) if (d <= CONTRACT_DAY_BUCKETS[i].max) return CONTRACT_DAY_BUCKETS[i];
+    return CONTRACT_DAY_BUCKETS[CONTRACT_DAY_BUCKETS.length - 1];
+  }
 
   var dashState = { preset: 'all', customStart: null, customEnd: null };
 
@@ -1323,6 +1436,12 @@ function initDashboard() {
     renderStatusBlock(s.inProgress, now);
     window._statusData = { contracted: s.contracted, unqualified: s.unqualified, inProgress: s.inProgress, now: now, allInProgress: REQ.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; }) };
 
+    renderContactSpeed(rows, pLabel);
+    renderTimeToContract(rows, pLabel);
+    renderFunnel(rows);
+    renderUnqualified(rows, pLabel);
+    renderActionCenter();
+
     var start12 = monthStart(addMonthsUTC(now, -11));
     renderMonthlyChart(document.getElementById('dashTrendChart'), REQ, function (r) { return r[REQ_IDX.inquiry]; }, start12);
     renderMonthlyChart(document.getElementById('dashContractTrendChart'), REQ, function (r) { return r[REQ_IDX.contract]; }, start12);
@@ -1402,6 +1521,206 @@ function initDashboard() {
     stallInsights.slice(0, 3).forEach(function (s) { insightsHtml += '<div class="status-insight-line">' + s + '</div>'; });
     document.getElementById('statusInsights').innerHTML = insightsHtml;
   }
+
+  // ---- 첫 연락이 늦으면 계약률이 떨어지나? ----
+  function renderContactSpeed(rows, pLabel) {
+    document.getElementById('contactSpeedSub').textContent = '선택 기간(' + pLabel + ') 문의 ' + rows.length.toLocaleString() + '건 · 문의 접수 → 최초 outbound 연락까지 걸린 시간별 이후 결과';
+    var groups = {};
+    CONTACT_SPEED_BUCKETS.forEach(function (b) { groups[b.key] = { total: 0, contracted: 0, unqualified: 0, inProgress: 0 }; });
+    var noRecord = { total: 0, contracted: 0, unqualified: 0, inProgress: 0 };
+    rows.forEach(function (r) {
+      var i = parseISO(r[REQ_IDX.inquiry]), c = parseISO(r[REQ_IDX.contact]);
+      var bucket;
+      if (!c) { bucket = noRecord; }
+      else {
+        var h = (c.getTime() - i.getTime()) / 3600000;
+        if (h < 0) return;
+        bucket = groups[contactBucketFor(h).key];
+      }
+      bucket.total++;
+      if (r[REQ_IDX.phase] === 'contracted') bucket.contracted++;
+      else if (r[REQ_IDX.phase] === 'unqualified') bucket.unqualified++;
+      else bucket.inProgress++;
+    });
+
+    var theadHtml = '<thead><tr><th>구간</th><th>문의 수</th><th>계약</th><th>미전환</th><th>진행 중</th><th>계약전환율</th></tr></thead>';
+    var tbody = '<tbody>';
+    CONTACT_SPEED_BUCKETS.forEach(function (b) {
+      var g = groups[b.key];
+      var rate = g.total ? g.contracted / g.total * 100 : 0;
+      tbody += '<tr><td>' + b.label + '</td><td class="num font-mono">' + g.total.toLocaleString() + '</td><td class="num font-mono">' + g.contracted.toLocaleString() + '</td><td class="num font-mono">' + g.unqualified.toLocaleString() + '</td><td class="num font-mono">' + g.inProgress.toLocaleString() + '</td><td><span class="rate-pill font-mono">' + rate.toFixed(1) + '%</span></td></tr>';
+    });
+    var noRate = noRecord.total ? noRecord.contracted / noRecord.total * 100 : 0;
+    tbody += '<tr class="flag"><td>연락 기록 없음</td><td class="num font-mono">' + noRecord.total.toLocaleString() + '</td><td class="num font-mono">' + noRecord.contracted.toLocaleString() + '</td><td class="num font-mono">' + noRecord.unqualified.toLocaleString() + '</td><td class="num font-mono">' + noRecord.inProgress.toLocaleString() + '</td><td><span class="rate-pill font-mono">' + noRate.toFixed(1) + '%</span></td></tr>';
+    tbody += '</tbody>';
+    document.getElementById('contactSpeedTable').innerHTML = theadHtml + tbody;
+
+    var within24 = { total: 0, contracted: 0 }, after24 = { total: 0, contracted: 0 };
+    CONTACT_SPEED_BUCKETS.forEach(function (b) {
+      var g = groups[b.key];
+      var target = b.key === 'over24' ? after24 : within24;
+      target.total += g.total; target.contracted += g.contracted;
+    });
+    var rateWithin = within24.total ? within24.contracted / within24.total * 100 : null;
+    var rateAfter = after24.total ? after24.contracted / after24.total * 100 : null;
+
+    var highlightHtml = '<div class="cs-compare">' +
+      '<div class="cs-box good"><div class="cs-box-label">24시간 이내 최초 연락</div><div class="cs-box-value font-mono">' + (rateWithin != null ? rateWithin.toFixed(1) + '%' : '—') + '</div><div class="cs-box-sub">n=' + within24.total.toLocaleString() + '</div></div>' +
+      '<div class="cs-vs">VS</div>' +
+      '<div class="cs-box bad"><div class="cs-box-label">24시간 이후 최초 연락</div><div class="cs-box-value font-mono">' + (rateAfter != null ? rateAfter.toFixed(1) + '%' : '—') + '</div><div class="cs-box-sub">n=' + after24.total.toLocaleString() + '</div></div>' +
+      '</div>';
+    if (rateWithin != null && rateAfter != null && within24.total >= 5 && after24.total >= 5) {
+      var diff = rateWithin - rateAfter;
+      if (Math.abs(diff) >= 0.5) {
+        highlightHtml += '<div class="cs-diff-line">"24시간 이후 첫 연락된 문의는 24시간 이내 문의보다 계약전환율이 ' + Math.abs(diff).toFixed(1) + '%p ' + (diff > 0 ? '낮습니다' : '높습니다') + '."</div>';
+      } else {
+        highlightHtml += '<div class="cs-diff-line flat">24시간 이내/이후 첫 연락 사이에 뚜렷한 계약전환율 차이는 보이지 않습니다.</div>';
+      }
+    }
+    document.getElementById('contactSpeedHighlight').innerHTML = highlightHtml;
+  }
+
+  // ---- 계약된 문의는 보통 며칠 만에 계약되나? ----
+  function renderTimeToContract(rows, pLabel) {
+    var contracted = rows.filter(function (r) { return r[REQ_IDX.phase] === 'contracted'; });
+    var counts = {};
+    CONTRACT_DAY_BUCKETS.forEach(function (b) { counts[b.key] = 0; });
+    var days = [], anomalyN = 0, noDateN = 0;
+    contracted.forEach(function (r) {
+      var i = parseISO(r[REQ_IDX.inquiry]), c = parseISO(r[REQ_IDX.contract]);
+      if (!c) { noDateN++; return; }
+      var d = (c.getTime() - i.getTime()) / 86400000;
+      if (d < 0) { anomalyN++; return; }
+      days.push(d);
+      counts[dayBucketFor(d).key]++;
+    });
+    var validN = days.length;
+    document.getElementById('timeToContractSub').textContent = '선택 기간(' + pLabel + ') 계약 ' + contracted.length.toLocaleString() + '건 중 소요일 계산 가능 ' + validN.toLocaleString() + '건 기준' + (anomalyN ? ' · 날짜 역전(데이터 이상) ' + anomalyN + '건 제외' : '') + (noDateN ? ' · 계약일 미기록 ' + noDateN + '건 제외' : '');
+
+    var labels = CONTRACT_DAY_BUCKETS.map(function (b) { return { main: b.label, sub: 'n=' + counts[b.key] }; });
+    var values = CONTRACT_DAY_BUCKETS.map(function (b) { return validN ? counts[b.key] / validN * 100 : 0; });
+    var valueLabels = values.map(function (v) { return v.toFixed(1) + '%'; });
+    var tooltips = CONTRACT_DAY_BUCKETS.map(function (b) { return counts[b.key].toLocaleString() + '건'; });
+    var bestIdx = 0, bestVal = -1;
+    for (var i = 0; i < values.length; i++) if (values[i] > bestVal) { bestVal = values[i]; bestIdx = i; }
+    if (validN) renderBarChart(document.getElementById('timeToContractChart'), { values: values, labels: labels, valueLabels: valueLabels, tooltips: tooltips, unit: '%', bestIdx: bestIdx });
+    else document.getElementById('timeToContractChart').innerHTML = '<div class="empty-state">데이터가 없습니다.</div>';
+
+    var within3 = counts.d0 + counts.d3;
+    var pct3 = validN ? (within3 / validN * 100) : 0;
+    var med = medianOf(days);
+    var insightHtml = '';
+    if (validN) insightHtml = '<div class="status-insight-line">계약까지 중앙 소요일은 <b>' + (med != null ? med.toFixed(1) + '일' : '—') + '</b>이며, 전체 계약의 <b>' + pct3.toFixed(0) + '%</b>가 문의 후 3일 이내 발생합니다.</div>';
+    document.getElementById('timeToContractInsight').innerHTML = insightHtml;
+  }
+
+  // ---- 문의는 계약까지 어디서 가장 많이 이탈하나? (신뢰 가능한 시각 기록이 있는 단계만: 문의/첫연락/첫견적/계약) ----
+  function renderFunnel(rows) {
+    var gInquiry = function (r) { return r[REQ_IDX.inquiry]; };
+    var gContact = function (r) { return r[REQ_IDX.contact]; };
+    var gQuote = function (r) { return r[REQ_IDX.quote]; };
+    var gContract = function (r) { return r[REQ_IDX.contract]; };
+    var total = rows.length;
+    var stepAB = computeFunnel(rows, gInquiry, gContact);
+    var stepBC = computeFunnel(rows, gContact, gQuote);
+    var stepCD = computeFunnel(rows, gQuote, gContract);
+    function overallCount(getter) { var n = 0; rows.forEach(function (r) { if (getter(r)) n++; }); return n; }
+    var nContact = overallCount(gContact), nQuote = overallCount(gQuote), nContract = overallCount(gContract);
+    var steps = [
+      { label: '문의 접수', count: total, overall: 100, prevRate: null, medNext: stepAB.median },
+      { label: '첫 연락', count: nContact, overall: total ? nContact / total * 100 : 0, prevRate: stepAB.rate, medNext: stepBC.median },
+      { label: '첫 견적', count: nQuote, overall: total ? nQuote / total * 100 : 0, prevRate: stepBC.rate, medNext: stepCD.median },
+      { label: '계약', count: nContract, overall: total ? nContract / total * 100 : 0, prevRate: stepCD.rate, medNext: null }
+    ];
+    var worstIdx = 1, worstRate = 101;
+    for (var i = 1; i < steps.length; i++) if (steps[i].prevRate != null && steps[i].prevRate < worstRate) { worstRate = steps[i].prevRate; worstIdx = i; }
+
+    var headHtml = '<div class="funnel-head"><span>단계</span><span></span><span>건수</span><span>이전 대비</span><span>다음까지</span></div>';
+    var rowsHtml = steps.map(function (st, i) {
+      return '<div class="funnel-step">' +
+        '<div class="funnel-step-name">' + st.label + '</div>' +
+        '<div class="funnel-step-track"><div class="funnel-step-fill' + (i === worstIdx ? ' leak' : '') + '" style="width:' + st.overall.toFixed(1) + '%"></div></div>' +
+        '<div class="funnel-step-count font-mono">' + st.count.toLocaleString() + '건</div>' +
+        '<div class="funnel-step-rate font-mono">' + (st.prevRate != null ? st.prevRate.toFixed(1) + '%' : '—') + '</div>' +
+        '<div class="funnel-step-days font-mono">' + (st.medNext != null ? st.medNext.toFixed(1) + '일' : '—') + '</div>' +
+        '</div>';
+    }).join('');
+    var insight = total ? '<div class="status-insight-line">가장 이탈이 큰 구간은 <b>\'' + steps[worstIdx - 1].label + ' → ' + steps[worstIdx].label + '\'</b>입니다 (이전 단계 대비 ' + worstRate.toFixed(1) + '%만 도달).</div>' : '';
+    document.getElementById('funnelSteps').innerHTML = headHtml + rowsHtml + insight;
+  }
+
+  // ---- 왜 계약되지 못했나? ----
+  function renderUnqualified(rows, pLabel) {
+    var unqualified = rows.filter(function (r) { return r[REQ_IDX.phase] === 'unqualified'; });
+    var total = unqualified.length;
+    var recorded = unqualified.filter(function (r) { return !!r[REQ_IDX.unqualifiedReason]; }).length;
+    var missing = total - recorded;
+    var recordRate = total ? recorded / total * 100 : 0;
+    var improvable = unqualified.filter(function (r) { return IMPROVABLE_REASONS.indexOf(r[REQ_IDX.unqualifiedReason]) !== -1; }).length;
+    var uncontrollable = unqualified.filter(function (r) { return UNCONTROLLABLE_REASONS.indexOf(r[REQ_IDX.unqualifiedReason]) !== -1; }).length;
+
+    document.getElementById('unqualSub').textContent = '선택 기간(' + pLabel + ') 미전환 ' + total.toLocaleString() + '건';
+
+    var kpiHtml = '';
+    kpiHtml += '<div class="kpi"><div class="kpi-label">미전환 건수</div><div class="kpi-value font-mono">' + total.toLocaleString() + '건</div></div>';
+    kpiHtml += '<div class="kpi" title="requests.unqualified_reason 이 비어있는 건의 비율"><div class="kpi-label">사유 기록률</div><div class="kpi-value font-mono">' + recordRate.toFixed(1) + '%</div><div class="kpi-sub">기록 ' + recorded.toLocaleString() + '건 · 미기록 ' + missing.toLocaleString() + '건' + (total && recordRate < 70 ? ' · 신뢰도 주의' : '') + '</div></div>';
+    kpiHtml += '<div class="kpi highlight"><div class="kpi-label">개선 가능 추정</div><div class="kpi-value font-mono">' + improvable.toLocaleString() + '건</div><div class="kpi-sub">' + (total ? (improvable / total * 100).toFixed(0) : '0') + '% · 연락지연·가격</div></div>';
+    kpiHtml += '<div class="kpi"><div class="kpi-label">통제 어려움 추정</div><div class="kpi-value font-mono">' + uncontrollable.toLocaleString() + '건</div><div class="kpi-sub">' + (total ? (uncontrollable / total * 100).toFixed(0) : '0') + '% · 무응답·취급범위 밖</div></div>';
+    document.getElementById('unqualKpi').innerHTML = kpiHtml;
+
+    var counts = {};
+    unqualified.forEach(function (r) { var k = r[REQ_IDX.unqualifiedReason] || '__missing__'; counts[k] = (counts[k] || 0) + 1; });
+    var keys = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; });
+    var labels = keys.map(function (k) { return { main: k === '__missing__' ? '사유 미기록' : (UNQUAL_REASON_LABELS[k] || k), sub: '' }; });
+    var values = keys.map(function (k) { return total ? counts[k] / total * 100 : 0; });
+    var valueLabels = values.map(function (v) { return v.toFixed(0) + '%'; });
+    var tooltips = keys.map(function (k) { return (k === '__missing__' ? '사유 미기록' : (UNQUAL_REASON_LABELS[k] || k)) + ' · ' + counts[k].toLocaleString() + '건'; });
+    if (keys.length) renderStackedBarChart(document.getElementById('unqualReasonBars'), { values: values, labels: labels, valueLabels: valueLabels, tooltips: tooltips, unit: '%' });
+    else document.getElementById('unqualReasonBars').innerHTML = '<div class="empty-state">데이터가 없습니다.</div>';
+
+    var insightHtml = '';
+    if (total) {
+      var topKey = keys[0];
+      var topLabel = topKey === '__missing__' ? '사유 미기록' : (UNQUAL_REASON_LABELS[topKey] || topKey);
+      insightHtml += '<div class="status-insight-line">미전환 사유 중 <b>\'' + topLabel + '\'</b> 비중이 가장 높습니다 (' + counts[topKey].toLocaleString() + '건 · ' + (counts[topKey] / total * 100).toFixed(0) + '%).</div>';
+      insightHtml += '<div class="status-insight-line">미전환 ' + total.toLocaleString() + '건 중 개선 가능으로 추정되는 이탈은 <b>' + improvable.toLocaleString() + '건 (' + (improvable / total * 100).toFixed(0) + '%)</b>입니다.</div>';
+      if (recordRate < 70) insightHtml += '<div class="status-insight-line">사유 기록률이 ' + recordRate.toFixed(0) + '%로 낮아 이 분석의 신뢰도에 한계가 있습니다.</div>';
+    }
+    document.getElementById('unqualInsight').innerHTML = insightHtml;
+  }
+
+  // ---- 지금 무엇을 해야 하나? (현재 시점 전체 기준, 기간 필터 무관) ----
+  function renderActionCenter() {
+    var now = new Date();
+    var inProgress = REQ.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; });
+    var urgentNew = inProgress.filter(function (r) { return r[REQ_IDX.stage] === 'new' && !r[REQ_IDX.contact] && daysSince(r[REQ_IDX.inquiry], now) >= 1; });
+    var quoteFollowup = inProgress.filter(function (r) { return r[REQ_IDX.stage] === 'quote_delivered' && daysSince(r[REQ_IDX.inquiry], now) >= 7; });
+    var longStall = inProgress.filter(function (r) { return daysSince(r[REQ_IDX.inquiry], now) >= 30; });
+    var reconsider = inProgress.filter(function (r) { return r[REQ_IDX.phase] === 'future_consideration'; });
+
+    var actions = [
+      { key: 'urgent', label: '즉시 확인', desc: '신규 접수 후 24시간 이상 최초 연락 기록 없음', rows: urgentNew, cls: urgentNew.length ? 'hot' : '' },
+      { key: 'followup', label: '이번 주 Follow-up', desc: '견적 전달 후 7일 이상 경과', rows: quoteFollowup, cls: quoteFollowup.length ? 'warn' : '' },
+      { key: 'stall', label: '장기 정체', desc: '진행 중 문의 중 30일 이상 경과', rows: longStall, cls: longStall.length ? 'hot' : '' },
+      { key: 'reconsider', label: '재접촉 후보', desc: '보류(future_consideration) 상태 문의', rows: reconsider, cls: '' }
+    ];
+    document.getElementById('actionCenterGrid').innerHTML = actions.map(function (a) {
+      return '<button type="button" class="action-card' + (a.cls ? ' ' + a.cls : '') + '" data-action="' + a.key + '">' +
+        '<div class="action-card-label">' + a.label + '</div>' +
+        '<div class="action-card-value font-mono">' + a.rows.length.toLocaleString() + '건</div>' +
+        '<div class="action-card-desc">' + a.desc + '</div></button>';
+    }).join('');
+    window._actionData = actions;
+  }
+
+  document.getElementById('actionCenterGrid').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-action]'); if (!btn) return;
+    var key = btn.getAttribute('data-action');
+    var matches = (window._actionData || []).filter(function (x) { return x.key === key; });
+    if (!matches.length) return;
+    var a = matches[0];
+    openStatusDrill(a.label + ' ' + a.rows.length.toLocaleString() + '건', a.desc, a.rows);
+  });
 
   document.getElementById('statusOutcomeRow') && document.getElementById('statusCard').addEventListener('click', function (e) {
     var btn = e.target.closest('[data-drill]');
