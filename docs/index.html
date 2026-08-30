@@ -1900,7 +1900,7 @@ function initDashboard() {
       var topMed = medianOf(topHours), allMed = medianOf(allUnqualHours);
       var reasonInsight = '<div class="status-insight-line">미전환 사유 중 <b>\'' + (REASON_LABELS[topKey] || topKey) + '\'</b>이 ' + reasonCounts[topKey].toLocaleString() + '건(' + (reasonCounts[topKey] / reasonTotal * 100).toFixed(0) + '%)으로 가장 많습니다.</div>';
       if (topMed != null && allMed != null) {
-        reasonInsight += '<div class="status-insight-line">이 그룹의 첫 연락 중앙시간은 <b>' + topMed.toFixed(1) + '시간</b>' + (topMed > allMed ? ' — 미전환 전체 평균(' + allMed.toFixed(1) + '시간)보다 늦습니다.' : '입니다.') + '</div>';
+        reasonInsight += '<div class="status-insight-line">이 그룹의 첫 연락 중앙시간은 <b>' + fmtHours(topMed) + '</b>' + (topMed > allMed ? ' — 미전환 전체 평균(' + fmtHours(allMed) + ')보다 늦습니다.' : '입니다.') + '</div>';
       }
       document.getElementById('cmpReasonInsight').innerHTML = reasonInsight;
     } else {
