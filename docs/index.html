@@ -1379,6 +1379,12 @@ function initDashboard() {
     return (now.getTime() - d.getTime()) / 86400000;
   }
 
+  function fmtHours(v) {
+    if (v == null) return '—';
+    if (v < 48) return v.toFixed(1) + '시간';
+    return (v / 24).toFixed(1) + '일';
+  }
+
   function medianOf(arr) {
     if (!arr.length) return null;
     var s = arr.slice().sort(function (a, b) { return a - b; });
@@ -2079,9 +2085,8 @@ function initDashboard() {
   function renderCmpContactSpeed(converted, unqualified) {
     var c = cmpGroupStats(converted), u = cmpGroupStats(unqualified);
     var pctFmt = function (v) { return v == null ? '—' : v.toFixed(0) + '%'; };
-    var hourFmt = function (v) { return v == null ? '—' : v.toFixed(1) + '시간'; };
     var html = '<div class="cmp2-metrics-grid">' +
-      cmp2MetricHtml('첫 연락 중앙시간', c.medContactHours, u.medContactHours, hourFmt) +
+      cmp2MetricHtml('첫 연락 중앙시간', c.medContactHours, u.medContactHours, fmtHours) +
       cmp2MetricHtml('1시간 이내 연락 비율', c.pctWithin1, u.pctWithin1, pctFmt) +
       cmp2MetricHtml('24시간 이상 소요 비율', c.pctOver24, u.pctOver24, pctFmt) +
       cmp2MetricHtml('연락 기록 없음 비율', c.pctNoContact, u.pctNoContact, pctFmt) +
@@ -2152,7 +2157,7 @@ function initDashboard() {
     var c = cmpGroupStats(converted), u = cmpGroupStats(unqualified);
     var diffs = [];
     if (c.medContactHours != null && u.medContactHours != null) {
-      diffs.push({ label: '첫 연락 중앙시간', left: c.medContactHours, right: u.medContactHours, fmt: function (v) { return v.toFixed(1) + '시간'; } });
+      diffs.push({ label: '첫 연락 중앙시간', left: c.medContactHours, right: u.medContactHours, fmt: fmtHours });
     }
     if (c.pctOver24 != null && u.pctOver24 != null) {
       diffs.push({ label: '24시간 이상 소요 비율', left: c.pctOver24, right: u.pctOver24, fmt: function (v) { return v.toFixed(0) + '%'; }, isPct: true });
@@ -2182,7 +2187,7 @@ function initDashboard() {
 
     var html = diffs.slice(0, 4).map(function (d) {
       var gap = d.left - d.right;
-      var gapStr = (d.isPct ? Math.abs(gap).toFixed(0) + '%p' : Math.abs(gap).toFixed(1));
+      var gapStr = (d.isPct ? Math.abs(gap).toFixed(0) + '%p' : d.fmt(Math.abs(gap)));
       return '<div class="diff-card"><div class="diff-card-label">' + d.label + '</div>' +
         '<div class="diff-card-pair"><span>계약</span><b>' + d.fmt(d.left) + '</b></div>' +
         '<div class="diff-card-pair"><span>미전환</span><b>' + d.fmt(d.right) + '</b></div>' +
