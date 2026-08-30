@@ -1195,9 +1195,10 @@ function initDashboard() {
   }
 
   function prevPeriodOf(range) {
+    if (dashState.preset === 'all') return null;
     var len = range[1].getTime() - range[0].getTime();
     if (!(len > 0)) return null;
-    return [new Date(range[0].getTime() - len), new Date(range[0].getTime())];
+    return [new Date(range[0].getTime() - len), new Date(range[0].getTime() - 1)];
   }
 
   function periodLabel(range) {
