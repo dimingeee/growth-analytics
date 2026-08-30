@@ -137,7 +137,7 @@
   /* kpi */
   .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
   .kpi-grid-sm { grid-template-columns: repeat(2, 1fr); }
-  .kpi-grid-dash { grid-template-columns: repeat(5, 1fr); }
+  .kpi-grid-dash { grid-template-columns: repeat(6, 1fr); }
   .kpi-delta { font-weight: 700; }
   .kpi-delta.up { color: var(--accent-ink); }
   .kpi-delta.down { color: var(--brick); }
@@ -314,6 +314,9 @@
   .status-outcome-label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
   .status-outcome-value { font-size: 24px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
   .status-outcome-sub { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .status-outcome-item .kpi-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 6px; }
+  .status-period-label { font-weight: 600; color: var(--accent-ink); }
+  .status-outcome-caption { font-size: 12.5px; color: var(--ink-3); margin-top: 10px; }
   @media (max-width: 760px) { .status-outcome-row { grid-template-columns: 1fr; } }
 
   .status-phase-row {
@@ -449,27 +452,47 @@
 
   <div id="viewDashboard">
     <div class="dash-hero">
-      <h2 class="font-head">이번 달 한눈에 보기</h2>
+      <h2 class="font-head">요약</h2>
       <p id="dashSubtitle" class="subtitle"></p>
     </div>
-    <section class="kpi-hero" id="dashKpiHero"></section>
-    <section class="kpi-grid" id="dashKpiGrid"></section>
+
+    <section class="filters" id="dashPeriodFilter">
+      <div class="filter-row">
+        <span class="filter-label">기간</span>
+        <div class="seg" id="dashPresetSeg">
+          <button data-preset="all" class="active">전체 기간</button>
+          <button data-preset="year">올해</button>
+          <button data-preset="12m">최근 12개월</button>
+          <button data-preset="6m">최근 6개월</button>
+          <button data-preset="3m">최근 3개월</button>
+          <button data-preset="1m">최근 1개월</button>
+          <button data-preset="custom">직접 입력</button>
+        </div>
+        <span id="dashCustomRange" style="display:none; gap:8px; align-items:center;" class="filter-row">
+          <input type="date" id="dashDateStart"> <span class="arrow">→</span> <input type="date" id="dashDateEnd">
+        </span>
+        <span class="filter-note">기준일: 문의 접수일 · KPI·문의 현황 전체에 적용됩니다</span>
+      </div>
+    </section>
+
+    <section class="kpi-grid kpi-grid-dash" id="dashKpiGrid"></section>
 
     <section class="card status-card" id="statusCard">
       <div class="status-block">
-        <div class="status-block-title">문의는 최종적으로 어떻게 되었나?</div>
+        <div class="status-block-title">문의는 현재 어떻게 되었나? · <span id="statusPeriodLabel" class="status-period-label"></span></div>
         <div class="status-outcome-row" id="statusOutcomeRow"></div>
+        <div class="status-outcome-caption" id="statusOutcomeCaption"></div>
       </div>
       <div class="status-arrow" aria-hidden="true">↓</div>
       <div class="status-block">
-        <div class="status-block-title">현재 진행 중 문의는 어디에 쌓여 있나?</div>
+        <div class="status-block-title">진행 중 문의는 현재 어디에 쌓여 있나? <span class="status-period-label">· 현재 시점 전체</span></div>
         <div id="statusPhaseBars"></div>
       </div>
       <div class="status-arrow" aria-hidden="true">↓</div>
       <div class="status-block">
         <div class="status-block-title">어느 단계에서 오래 멈춰 있나?</div>
         <div id="statusStallGrid" class="status-stall-grid"></div>
-        <div class="status-stall-note">체류일은 단계 진입 시각 기록이 없어 <b>문의 접수일 기준 경과일</b>로 근사한 값입니다.</div>
+        <div class="status-stall-note">체류일은 단계 진입 시각 기록이 없어 <b>문의 접수일 기준 경과일</b>로 근사한 값입니다. 기준선(3·7·14·30일)은 필요 시 코드에서 조정할 수 있습니다.</div>
       </div>
       <div class="status-insights" id="statusInsights"></div>
     </section>
@@ -1115,81 +1138,26 @@ function initDashboard() {
     return '<div class="kpi-sub"><span class="kpi-delta ' + cls + '">' + sign + ' ' + Math.abs(delta).toFixed(1) + '%</span> 전월 동기간 대비</div>';
   }
 
-  function renderDashboard() {
-    var now = new Date();
-    var thisMonthStart = monthStart(now);
-    var prevMonthStart = new Date(Date.UTC(thisMonthStart.getUTCFullYear(), thisMonthStart.getUTCMonth() - 1, 1));
-    var prevMonthDays = new Date(Date.UTC(prevMonthStart.getUTCFullYear(), prevMonthStart.getUTCMonth() + 1, 0)).getUTCDate();
-    var cappedDay = Math.min(now.getUTCDate(), prevMonthDays);
-    var prevMonthSameDayEnd = new Date(Date.UTC(prevMonthStart.getUTCFullYear(), prevMonthStart.getUTCMonth(), cappedDay, 23, 59, 59, 999));
-    var d3 = addMonthsUTC(now, -3);
-
-    document.getElementById('dashSubtitle').textContent = '기준: ' + fmtDate(now) + ' · 요청(문의) ' + REQ.length.toLocaleString() + '건 · 사건 ' + CASES.length.toLocaleString() + '건 스냅샷';
-
-    var inqThis = REQ.filter(function (r) { var d = parseISO(r[REQ_IDX.inquiry]); return d && d.getTime() >= thisMonthStart.getTime(); }).length;
-    var inqPrev = REQ.filter(function (r) { var d = parseISO(r[REQ_IDX.inquiry]); return d && d.getTime() >= prevMonthStart.getTime() && d.getTime() <= prevMonthSameDayEnd.getTime(); }).length;
-    var inqDelta = inqPrev ? ((inqThis - inqPrev) / inqPrev * 100) : null;
-
-    var recentReq = REQ.filter(function (r) { var d = parseISO(r[REQ_IDX.inquiry]); return d && d.getTime() >= d3.getTime(); });
-    var convFunnel = computeFunnel(recentReq, function (r) { return r[REQ_IDX.inquiry]; }, function (r) { return r[REQ_IDX.contract]; });
-    var contactFunnel = computeFunnel(recentReq, function (r) { return r[REQ_IDX.inquiry]; }, function (r) { return r[REQ_IDX.contact]; });
-
-    var inProgressCases = CASES.filter(function (r) { return r[CASE_IDX.commission] && !r[CASE_IDX.registrationOfficial]; }).length;
-
-    var contractsThis = REQ.filter(function (r) { var d = parseISO(r[REQ_IDX.contract]); return d && d.getTime() >= thisMonthStart.getTime(); }).length;
-    var contractsPrev = REQ.filter(function (r) { var d = parseISO(r[REQ_IDX.contract]); return d && d.getTime() >= prevMonthStart.getTime() && d.getTime() <= prevMonthSameDayEnd.getTime(); }).length;
-    var contractsDelta = contractsPrev ? ((contractsThis - contractsPrev) / contractsPrev * 100) : null;
-
-    var spark6Start = monthStart(addMonthsUTC(now, -5));
-    var sparkGroups = {}, sparkOrder = [];
-    for (var si = 0; si < 6; si++) { var smk = groupKey(addMonthsUTC(spark6Start, si), 'month'); sparkGroups[smk] = 0; sparkOrder.push(smk); }
-    REQ.forEach(function (r) {
-      var d = parseISO(r[REQ_IDX.contract]);
-      if (!d || d.getTime() < spark6Start.getTime()) return;
-      var mk = groupKey(d, 'month');
-      if (sparkGroups[mk] !== undefined) sparkGroups[mk]++;
-    });
-    var sparkVals = sparkOrder.map(function (k) { return sparkGroups[k]; });
-
-    var heroHtml = '<div class="kpi-hero-main">' +
-      '<div class="kpi-label"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m9.5 15 1.8 1.8L15 13"/></svg>이번 달 신규 계약</div>' +
-      '<div class="kpi-value font-mono">' + contractsThis.toLocaleString() + '건</div>' +
-      deltaHtml(contractsDelta) +
-      '</div>' +
-      '<div class="kpi-spark-wrap"><div class="kpi-spark" id="dashHeroSpark"></div><div class="kpi-spark-label">최근 6개월 추이</div></div>';
-    document.getElementById('dashKpiHero').innerHTML = heroHtml;
-    renderSparkline(document.getElementById('dashHeroSpark'), sparkVals);
-
-    var kpiHtml = '';
-    var icoInbox = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>';
-    var icoTarget = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>';
-    var icoFolder = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
-    var icoClock = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">' + icoInbox + '이번 달 신규 문의 (누적)</div><div class="kpi-value font-mono">' + inqThis.toLocaleString() + '건</div>' + deltaHtml(inqDelta) + '</div>';
-    kpiHtml += '<div class="kpi highlight"><div class="kpi-label">' + icoTarget + '문의 → 계약 전환율</div><div class="kpi-value font-mono">' + convFunnel.rate.toFixed(1) + '%</div><div class="kpi-sub">최근 3개월 · n=' + convFunnel.total.toLocaleString() + '</div></div>';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">' + icoFolder + '진행중인 사건</div><div class="kpi-value font-mono">' + inProgressCases.toLocaleString() + '건</div><div class="kpi-sub">수임 이후 · 등록 전 (근사치)</div></div>';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">' + icoClock + '평균 첫 연락 소요일수</div><div class="kpi-value font-mono">' + (contactFunnel.avg != null ? contactFunnel.avg.toFixed(1) + '일' : '—') + '</div><div class="kpi-sub">최근 3개월 · 발신 기록 기준</div></div>';
-    document.getElementById('dashKpiGrid').innerHTML = kpiHtml;
-
-    var start12 = monthStart(addMonthsUTC(now, -11));
-    renderMonthlyChart(document.getElementById('dashTrendChart'), REQ, function (r) { return r[REQ_IDX.inquiry]; }, start12);
-    renderMonthlyChart(document.getElementById('dashContractTrendChart'), REQ, function (r) { return r[REQ_IDX.contract]; }, start12);
-
-    var IP_LABELS = { '특허': '특허', '상표': '상표', '디자인': '디자인', '기타': '기타' };
-    var CHANNEL_LABELS = { web: '웹', phone: '전화', referral: '추천', kakao: '카카오톡', email: '이메일', additional_retainer: '추가 위임', '': '(미기록)' };
-    renderDistributionChart(document.getElementById('dashIpChart'), REQ, function (r) { return r[REQ_IDX.category]; }, IP_LABELS);
-    renderDistributionChart(document.getElementById('dashChannelChart'), REQ, function (r) { return r[REQ_IDX.channel]; }, CHANNEL_LABELS);
-
-    renderStatusBlock();
-  }
-
-  // ---- 문의 현황 통합 블록: 전환/미전환 -> 진행 중 Phase -> 정체 ----
+  // ---- 요약 화면: 기간 상태 + 핵심 KPI + 문의 현황(전환/미전환/진행중) -> stage 분포 -> 정체 ----
   var IN_PROGRESS_PHASES = ['inquiry', 'consulting', 'review_report', 'future_consideration'];
   var PHASE_LABELS = {
     inquiry: '신규 문의', consulting: '상담 중', review_report: '검토 중',
     future_consideration: '보류', contracted: '계약 전환', unqualified: '미전환'
   };
+  var STAGE_LABELS_REQ = {
+    new: '신규 접수', second_call_needed: '재통화 필요', follow_up_call_needed: '후속 연락 필요',
+    waiting_for_docs: '자료 대기', quote_delivered: '견적 전달', under_review: '내부 검토 중',
+    review_proposal_done: '검토서 작성 완료', review_complete: '검토 완료', negotiation: '협상 중',
+    qualified: '계약 조건 확정', future_consideration: '보류', unqualified: '미전환'
+  };
   var STALL_THRESHOLDS = [3, 7, 14, 30];
+  var PERIOD_PRESET_LABELS = { all: '전체 기간', year: '올해', '12m': '최근 12개월', '6m': '최근 6개월', '3m': '최근 3개월', '1m': '최근 1개월' };
+  var UNQUAL_REASON_LABELS = {
+    delayed_response: '연락 지연', no_response: '고객 무응답', cost: '가격', other: '기타',
+    trademark: '상표(취급 범위 밖)', design: '디자인(취급 범위 밖)'
+  };
+
+  var dashState = { preset: 'all', customStart: null, customEnd: null };
 
   function daysSince(dateStr, now) {
     var d = parseISO(dateStr);
@@ -1204,19 +1172,98 @@ function initDashboard() {
     return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
   }
 
+  function reqDateRangeFull() {
+    var dates = REQ.map(function (r) { return parseISO(r[REQ_IDX.inquiry]); }).filter(Boolean);
+    if (!dates.length) { var n = new Date(); return [n, n]; }
+    return [new Date(Math.min.apply(null, dates.map(function (d) { return d.getTime(); }))),
+            new Date(Math.max.apply(null, dates.map(function (d) { return d.getTime(); })))];
+  }
+
+  function dashCurrentRange() {
+    var full = reqDateRangeFull();
+    var now = new Date();
+    if (dashState.preset === 'all') return full;
+    if (dashState.preset === 'year') return [new Date(Date.UTC(now.getUTCFullYear(), 0, 1)), now];
+    if (dashState.preset === '12m') return [monthStart(addMonthsUTC(now, -11)), now];
+    if (dashState.preset === '6m') return [monthStart(addMonthsUTC(now, -5)), now];
+    if (dashState.preset === '3m') return [monthStart(addMonthsUTC(now, -2)), now];
+    if (dashState.preset === '1m') return [monthStart(now), now];
+    if (dashState.preset === 'custom') {
+      return [dashState.customStart ? new Date(dashState.customStart) : full[0], dashState.customEnd ? new Date(dashState.customEnd) : full[1]];
+    }
+    return full;
+  }
+
+  function prevPeriodOf(range) {
+    var len = range[1].getTime() - range[0].getTime();
+    if (!(len > 0)) return null;
+    return [new Date(range[0].getTime() - len), new Date(range[0].getTime())];
+  }
+
+  function periodLabel(range) {
+    if (dashState.preset === 'custom') return fmtDate(range[0]) + ' ~ ' + fmtDate(range[1]);
+    return PERIOD_PRESET_LABELS[dashState.preset] || '전체 기간';
+  }
+
+  function rowsInRange(range) {
+    return REQ.filter(function (r) {
+      var d = parseISO(r[REQ_IDX.inquiry]);
+      return d && d.getTime() >= range[0].getTime() && d.getTime() <= range[1].getTime();
+    });
+  }
+
+  function computeSummary(rows) {
+    var total = rows.length;
+    var contracted = rows.filter(function (r) { return r[REQ_IDX.phase] === 'contracted'; });
+    var unqualified = rows.filter(function (r) { return r[REQ_IDX.phase] === 'unqualified'; });
+    var inProgress = rows.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; });
+    var contactHours = [];
+    rows.forEach(function (r) {
+      var i = parseISO(r[REQ_IDX.inquiry]), c = parseISO(r[REQ_IDX.contact]);
+      if (i && c) { var h = (c.getTime() - i.getTime()) / 3600000; if (h >= 0) contactHours.push(h); }
+    });
+    var contractDays = [];
+    contracted.forEach(function (r) {
+      var i = parseISO(r[REQ_IDX.inquiry]), c = parseISO(r[REQ_IDX.contract]);
+      if (i && c) { var dd = (c.getTime() - i.getTime()) / 86400000; if (dd >= 0) contractDays.push(dd); }
+    });
+    return {
+      total: total, contracted: contracted, unqualified: unqualified, inProgress: inProgress,
+      contractRate: total ? contracted.length / total * 100 : 0,
+      unqualRate: total ? unqualified.length / total * 100 : 0,
+      inProgressRate: total ? inProgress.length / total * 100 : 0,
+      medContactHours: medianOf(contactHours),
+      medContractDays: medianOf(contractDays)
+    };
+  }
+
+  function cmpLine(cur, prev, opts) {
+    opts = opts || {};
+    if (prev == null) return '<div class="kpi-sub">이전 동일 기간 데이터 없음</div>';
+    var fmt = function (v) { return opts.pp ? v.toFixed(1) + '%' : (opts.decimals != null ? v.toFixed(opts.decimals) : Math.round(v).toLocaleString()) + (opts.unit || ''); };
+    var diff = cur - prev;
+    var sign = diff >= 0 ? '▲' : '▼';
+    var cls = diff >= 0 ? 'up' : 'down';
+    var diffStr = opts.pp ? Math.abs(diff).toFixed(1) + '%p' : fmt(Math.abs(diff));
+    return '<div class="kpi-sub">이전 동일 기간 ' + fmt(prev) + ' · <span class="kpi-delta ' + cls + '">' + sign + ' ' + diffStr + '</span></div>';
+  }
+
   function statusRows(rows) {
-    var thead = '<thead><tr><th>ID</th><th>카테고리</th><th>채널</th><th>문의일</th><th>단계</th><th>경과일</th></tr></thead>';
+    var thead = '<thead><tr><th>ID</th><th>카테고리</th><th>채널</th><th>문의일</th><th>phase</th><th>stage</th><th>경과일</th><th>미전환 사유</th></tr></thead>';
     var now = new Date();
     var tbody = '<tbody>';
     rows.slice(0, 300).forEach(function (r) {
       var d = daysSince(r[REQ_IDX.inquiry], now);
+      var reason = r[REQ_IDX.phase] === 'unqualified' ? (r[REQ_IDX.unqualifiedReason] ? escapeHtml(UNQUAL_REASON_LABELS[r[REQ_IDX.unqualifiedReason]] || r[REQ_IDX.unqualifiedReason]) : '<span style="color:var(--ink-3);">사유 미기록</span>') : '—';
       tbody += '<tr><td>' + escapeHtml(r[REQ_IDX.id]) + '</td><td>' + escapeHtml(r[REQ_IDX.category] || '—') + '</td>' +
         '<td>' + escapeHtml(r[REQ_IDX.channel] || '—') + '</td><td>' + (parseISO(r[REQ_IDX.inquiry]) ? fmtDate(parseISO(r[REQ_IDX.inquiry])) : '—') + '</td>' +
         '<td>' + (PHASE_LABELS[r[REQ_IDX.phase]] || r[REQ_IDX.phase] || '—') + '</td>' +
-        '<td class="num font-mono">' + (d != null ? d.toFixed(0) + '일' : '—') + '</td></tr>';
+        '<td>' + (STAGE_LABELS_REQ[r[REQ_IDX.stage]] || r[REQ_IDX.stage] || '—') + '</td>' +
+        '<td class="num font-mono">' + (d != null ? d.toFixed(0) + '일' : '—') + '</td>' +
+        '<td>' + reason + '</td></tr>';
     });
     tbody += '</tbody>';
-    if (rows.length > 300) tbody += '<tfoot><tr><td colspan="6" style="color:var(--ink-3); text-align:center;">외 ' + (rows.length - 300).toLocaleString() + '건 더 있음 — 데이터 다운로드로 전체 확인</td></tr></tfoot>';
+    if (rows.length > 300) tbody += '<tfoot><tr><td colspan="8" style="color:var(--ink-3); text-align:center;">외 ' + (rows.length - 300).toLocaleString() + '건 더 있음 — 데이터 다운로드로 전체 확인</td></tr></tfoot>';
     return thead + tbody;
   }
 
@@ -1229,98 +1276,130 @@ function initDashboard() {
     card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  function renderStatusBlock() {
+  function renderDashboard() {
     var now = new Date();
-    var total = REQ.length;
-    var contracted = REQ.filter(function (r) { return r[REQ_IDX.phase] === 'contracted'; });
-    var unqualified = REQ.filter(function (r) { return r[REQ_IDX.phase] === 'unqualified'; });
-    var inProgress = REQ.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; });
+    document.getElementById('dashSubtitle').textContent = '기준: ' + fmtDate(now) + ' · 요청(문의) ' + REQ.length.toLocaleString() + '건 · 사건 ' + CASES.length.toLocaleString() + '건 스냅샷';
 
-    function pct(n) { return total ? (n / total * 100) : 0; }
+    var range = dashCurrentRange();
+    var rows = rowsInRange(range);
+    var s = computeSummary(rows);
+    var prevRange = prevPeriodOf(range);
+    var prevRows = prevRange ? rowsInRange(prevRange) : [];
+    var ps = prevRange ? computeSummary(prevRows) : null;
+    var pLabel = periodLabel(range);
+
+    document.getElementById('statusPeriodLabel').textContent = pLabel;
+    document.getElementById('statusOutcomeCaption').textContent = '기준: ' + pLabel + ' · Request ' + s.total.toLocaleString() + '건 (' + fmtDate(range[0]) + ' ~ ' + fmtDate(range[1]) + ')';
+
+    var icoInbox = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>';
+    var icoTarget = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>';
+    var icoX = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>';
+    var icoFolder = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
+    var icoClock = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>';
+    var icoCalendar = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>';
+
+    var kpiHtml = '';
+    kpiHtml += '<div class="kpi"><div class="kpi-label">' + icoInbox + '전체 문의</div><div class="kpi-value font-mono">' + s.total.toLocaleString() + '건</div>' + cmpLine(s.total, ps ? ps.total : null) + '</div>';
+    kpiHtml += '<div class="kpi highlight" title="선택 기간 내 접수된 Request 중 계약(phase=contracted)된 Request 비율"><div class="kpi-label">' + icoTarget + '계약 전환율</div><div class="kpi-value font-mono">' + s.contractRate.toFixed(1) + '%</div><div class="kpi-sub">' + s.contracted.length.toLocaleString() + '건</div>' + cmpLine(s.contractRate, ps ? ps.contractRate : null, { pp: true }) + '</div>';
+    kpiHtml += '<div class="kpi" title="선택 기간 내 접수된 Request 중 미전환(phase=unqualified) 처리된 Request 비율"><div class="kpi-label">' + icoX + '미전환율</div><div class="kpi-value font-mono">' + s.unqualRate.toFixed(1) + '%</div><div class="kpi-sub">' + s.unqualified.length.toLocaleString() + '건</div>' + cmpLine(s.unqualRate, ps ? ps.unqualRate : null, { pp: true }) + '</div>';
+    kpiHtml += '<div class="kpi"><div class="kpi-label">' + icoFolder + '진행 중</div><div class="kpi-value font-mono">' + s.inProgress.length.toLocaleString() + '건</div><div class="kpi-sub">' + s.inProgressRate.toFixed(1) + '%</div>' + cmpLine(s.inProgress.length, ps ? ps.inProgress.length : null, { unit: '건' }) + '</div>';
+    kpiHtml += '<div class="kpi" title="Request 생성 시각부터 최초 outbound communication까지의 시간 (중앙값)"><div class="kpi-label">' + icoClock + '첫 연락 중앙시간</div><div class="kpi-value font-mono">' + (s.medContactHours != null ? (s.medContactHours < 48 ? s.medContactHours.toFixed(1) + '시간' : (s.medContactHours / 24).toFixed(1) + '일') : '—') + '</div>' + cmpLine(s.medContactHours, ps ? ps.medContactHours : null, { decimals: 1, unit: '시간' }) + '</div>';
+    kpiHtml += '<div class="kpi" title="Request 생성 시각부터 최초 계약 시각까지 (중앙값, 계약 건 기준)"><div class="kpi-label">' + icoCalendar + '문의→계약 중앙 소요일</div><div class="kpi-value font-mono">' + (s.medContractDays != null ? s.medContractDays.toFixed(1) + '일' : '—') + '</div>' + cmpLine(s.medContractDays, ps ? ps.medContractDays : null, { decimals: 1, unit: '일' }) + '</div>';
+    document.getElementById('dashKpiGrid').innerHTML = kpiHtml;
 
     var outcomeHtml = '';
     outcomeHtml += '<button type="button" class="status-outcome-item good" data-drill="outcome" data-key="contracted">' +
-      '<span class="status-outcome-label">계약</span><span class="status-outcome-value font-mono">' + contracted.length.toLocaleString() + '건</span>' +
-      '<span class="status-outcome-sub">' + pct(contracted.length).toFixed(1) + '%</span></button>';
+      '<span class="status-outcome-label">계약</span><span class="status-outcome-value font-mono">' + s.contracted.length.toLocaleString() + '건</span>' +
+      '<span class="status-outcome-sub">' + s.contractRate.toFixed(1) + '%</span>' + cmpLine(s.contractRate, ps ? ps.contractRate : null, { pp: true }) + '</button>';
     outcomeHtml += '<button type="button" class="status-outcome-item bad" data-drill="outcome" data-key="unqualified">' +
-      '<span class="status-outcome-label">미전환</span><span class="status-outcome-value font-mono">' + unqualified.length.toLocaleString() + '건</span>' +
-      '<span class="status-outcome-sub">' + pct(unqualified.length).toFixed(1) + '%</span></button>';
+      '<span class="status-outcome-label">미전환</span><span class="status-outcome-value font-mono">' + s.unqualified.length.toLocaleString() + '건</span>' +
+      '<span class="status-outcome-sub">' + s.unqualRate.toFixed(1) + '%</span>' + cmpLine(s.unqualRate, ps ? ps.unqualRate : null, { pp: true }) + '</button>';
     outcomeHtml += '<button type="button" class="status-outcome-item neutral" data-drill="outcome" data-key="inprogress">' +
-      '<span class="status-outcome-label">진행 중</span><span class="status-outcome-value font-mono">' + inProgress.length.toLocaleString() + '건</span>' +
-      '<span class="status-outcome-sub">' + pct(inProgress.length).toFixed(1) + '%</span></button>';
+      '<span class="status-outcome-label">진행 중</span><span class="status-outcome-value font-mono">' + s.inProgress.length.toLocaleString() + '건</span>' +
+      '<span class="status-outcome-sub">' + s.inProgressRate.toFixed(1) + '%</span>' + cmpLine(s.inProgress.length, ps ? ps.inProgress.length : null, { unit: '건' }) + '</button>';
     document.getElementById('statusOutcomeRow').innerHTML = outcomeHtml;
 
-    var phaseCounts = {};
-    IN_PROGRESS_PHASES.forEach(function (p) { phaseCounts[p] = 0; });
-    inProgress.forEach(function (r) { var p = r[REQ_IDX.phase]; if (phaseCounts[p] !== undefined) phaseCounts[p]++; });
-    var phaseOrder = IN_PROGRESS_PHASES.slice().sort(function (a, b) { return phaseCounts[b] - phaseCounts[a]; });
-    var maxPhaseCount = Math.max.apply(null, phaseOrder.map(function (p) { return phaseCounts[p]; }).concat([1]));
-    var topPhase = phaseOrder[0];
+    renderStatusBlock(s.inProgress, now);
+    window._statusData = { contracted: s.contracted, unqualified: s.unqualified, inProgress: s.inProgress, now: now, allInProgress: REQ.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; }) };
+
+    var start12 = monthStart(addMonthsUTC(now, -11));
+    renderMonthlyChart(document.getElementById('dashTrendChart'), REQ, function (r) { return r[REQ_IDX.inquiry]; }, start12);
+    renderMonthlyChart(document.getElementById('dashContractTrendChart'), REQ, function (r) { return r[REQ_IDX.contract]; }, start12);
+
+    var IP_LABELS = { '특허': '특허', '상표': '상표', '디자인': '디자인', '기타': '기타' };
+    var CHANNEL_LABELS = { web: '웹', phone: '전화', referral: '추천', kakao: '카카오톡', email: '이메일', additional_retainer: '추가 위임', '': '(미기록)' };
+    renderDistributionChart(document.getElementById('dashIpChart'), REQ, function (r) { return r[REQ_IDX.category]; }, IP_LABELS);
+    renderDistributionChart(document.getElementById('dashChannelChart'), REQ, function (r) { return r[REQ_IDX.channel]; }, CHANNEL_LABELS);
+  }
+
+  // 진행 중 문의는 항상 "현재 시점 전체"(기간 필터와 무관) 기준 — 오래된 정체 건이 기간 필터로 가려지지 않도록 함
+  function renderStatusBlock() {
+    var now = new Date();
+    var inProgress = REQ.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; });
+
+    var stageCounts = {};
+    inProgress.forEach(function (r) { var st = r[REQ_IDX.stage] || 'unknown'; stageCounts[st] = (stageCounts[st] || 0) + 1; });
+    var stageOrder = Object.keys(stageCounts).sort(function (a, b) { return stageCounts[b] - stageCounts[a]; });
+    var maxStageCount = Math.max.apply(null, stageOrder.map(function (p) { return stageCounts[p]; }).concat([1]));
+    var topStage = stageOrder[0];
 
     var phaseHtml = '';
-    phaseOrder.forEach(function (p, i) {
-      var c = phaseCounts[p];
-      var w = maxPhaseCount ? (c / maxPhaseCount * 100) : 0;
-      phaseHtml += '<button type="button" class="status-phase-row' + (i === 0 && c > 0 ? ' top' : '') + '" data-drill="phase" data-key="' + p + '">' +
-        '<span class="status-phase-name">' + PHASE_LABELS[p] + '</span>' +
+    stageOrder.forEach(function (st, i) {
+      var c = stageCounts[st];
+      var w = maxStageCount ? (c / maxStageCount * 100) : 0;
+      phaseHtml += '<button type="button" class="status-phase-row' + (i === 0 && c > 0 ? ' top' : '') + '" data-drill="stage" data-key="' + st + '">' +
+        '<span class="status-phase-name">' + (STAGE_LABELS_REQ[st] || st) + '</span>' +
         '<span class="status-phase-track"><span class="status-phase-fill" style="width:' + w.toFixed(1) + '%"></span></span>' +
         '<span class="status-phase-count font-mono">' + c.toLocaleString() + '건</span></button>';
     });
-    if (inProgress.length && phaseCounts[topPhase] > 0) {
-      phaseHtml += '<div class="status-phase-top-note">현재 진행 중 문의 중 가장 많은 건이 \'' + PHASE_LABELS[topPhase] + '\' 단계에 있습니다.</div>';
+    if (inProgress.length && stageCounts[topStage] > 0) {
+      phaseHtml += '<div class="status-phase-top-note">현재 진행 중 문의 ' + inProgress.length.toLocaleString() + '건 중 가장 많은 건이 \'' + (STAGE_LABELS_REQ[topStage] || topStage) + '\' 단계에 있습니다.</div>';
     }
     document.getElementById('statusPhaseBars').innerHTML = phaseHtml || '<div class="empty-state">진행 중인 문의가 없습니다.</div>';
 
     var stallHtml = '';
     var stallInsights = [];
-    phaseOrder.forEach(function (p) {
-      var rows = inProgress.filter(function (r) { return r[REQ_IDX.phase] === p; });
+    stageOrder.forEach(function (st) {
+      var rows = inProgress.filter(function (r) { return (r[REQ_IDX.stage] || 'unknown') === st; });
       if (!rows.length) return;
+      var label = STAGE_LABELS_REQ[st] || st;
       var elapsed = rows.map(function (r) { return daysSince(r[REQ_IDX.inquiry], now); }).filter(function (v) { return v != null; });
       var med = medianOf(elapsed);
-
-      if (p === 'inquiry') {
-        var noContact = rows.filter(function (r) { return !r[REQ_IDX.contact]; });
-        var over24h = noContact.filter(function (r) { var d = daysSince(r[REQ_IDX.inquiry], now); return d != null && d >= 1; });
-        var cardCls = over24h.length > 0 ? ' warn' : '';
-        stallHtml += '<div class="status-stall-card' + cardCls + '">' +
-          '<div class="status-stall-head"><span class="status-stall-name">' + PHASE_LABELS[p] + '</span><span class="status-stall-count">현재 ' + rows.length.toLocaleString() + '건</span></div>' +
-          '<div class="status-stall-thresholds">' +
-          '<button type="button" class="status-stall-btn' + (over24h.length ? ' hot' : '') + '" data-drill="stall" data-key="' + p + '" data-mode="nocontact" data-th="1">' +
-          '<span>24시간 이상 미연락</span><b>' + over24h.length.toLocaleString() + '건</b></button>' +
-          '</div></div>';
-        if (over24h.length) stallInsights.push('신규 문의 ' + rows.length.toLocaleString() + '건 중 ' + over24h.length.toLocaleString() + '건은 24시간 이상 최초 연락 기록이 없습니다.');
-        return;
-      }
 
       var overCounts = STALL_THRESHOLDS.map(function (th) {
         return rows.filter(function (r) { var d = daysSince(r[REQ_IDX.inquiry], now); return d != null && d >= th; }).length;
       });
-      var worstOver = overCounts[2]; // 14일 이상 기준으로 경고색 판단
-      var cardCls2 = worstOver > 0 ? (overCounts[3] > 0 ? ' brick' : ' warn') : '';
-      stallHtml += '<div class="status-stall-card' + cardCls2 + '">' +
-        '<div class="status-stall-head"><span class="status-stall-name">' + PHASE_LABELS[p] + '</span><span class="status-stall-count">현재 ' + rows.length.toLocaleString() + '건</span></div>' +
+      var cardCls = overCounts[2] > 0 ? (overCounts[3] > 0 ? ' brick' : ' warn') : '';
+
+      var extraBtn = '';
+      if (st === 'new') {
+        var noContact = rows.filter(function (r) { return !r[REQ_IDX.contact]; });
+        var over24h = noContact.filter(function (r) { var d = daysSince(r[REQ_IDX.inquiry], now); return d != null && d >= 1; });
+        if (over24h.length && !cardCls) cardCls = ' warn';
+        extraBtn = '<button type="button" class="status-stall-btn' + (over24h.length ? ' hot' : '') + '" data-drill="stall" data-key="' + st + '" data-mode="nocontact" data-th="1">' +
+          '<span>24시간 이상 미연락</span><b>' + over24h.length.toLocaleString() + '건</b></button>';
+        if (over24h.length) stallInsights.push('신규 접수 ' + rows.length.toLocaleString() + '건 중 ' + over24h.length.toLocaleString() + '건은 24시간 이상 최초 연락 기록이 없습니다.');
+      }
+
+      stallHtml += '<div class="status-stall-card' + cardCls + '">' +
+        '<div class="status-stall-head"><span class="status-stall-name">' + label + '</span><span class="status-stall-count">현재 ' + rows.length.toLocaleString() + '건</span></div>' +
         '<div class="status-stall-median">중앙 경과일 ' + (med != null ? med.toFixed(1) + '일' : '—') + '</div>' +
-        '<div class="status-stall-thresholds">' +
+        '<div class="status-stall-thresholds">' + extraBtn +
         STALL_THRESHOLDS.map(function (th, i) {
-          return '<button type="button" class="status-stall-btn' + (overCounts[i] > 0 && th >= 14 ? ' hot' : '') + '" data-drill="stall" data-key="' + p + '" data-mode="days" data-th="' + th + '">' +
+          return '<button type="button" class="status-stall-btn' + (overCounts[i] > 0 && th >= 14 ? ' hot' : '') + '" data-drill="stall" data-key="' + st + '" data-mode="days" data-th="' + th + '">' +
             '<span>' + th + '일 이상</span><b>' + overCounts[i].toLocaleString() + '건</b></button>';
         }).join('') +
         '</div></div>';
-      if (overCounts[1] > 0) stallInsights.push(PHASE_LABELS[p] + ' ' + rows.length.toLocaleString() + '건 중 ' + overCounts[1].toLocaleString() + '건이 7일 이상 정체되어 있습니다.');
+      if (overCounts[1] > 0) stallInsights.push('\'' + label + '\' ' + rows.length.toLocaleString() + '건 중 ' + overCounts[1].toLocaleString() + '건이 7일 이상 정체되어 있습니다.');
     });
     document.getElementById('statusStallGrid').innerHTML = stallHtml || '<div class="status-stall-empty">정체 데이터가 없습니다.</div>';
 
     var insightsHtml = '';
-    if (inProgress.length && phaseCounts[topPhase] > 0) {
-      insightsHtml += '<div class="status-insight-line">현재 진행 중 문의 <b>' + inProgress.length.toLocaleString() + '건</b> 중 <b>' + pct2(phaseCounts[topPhase], inProgress.length) + '%</b>가 \'' + PHASE_LABELS[topPhase] + '\' 단계에 있습니다.</div>';
+    if (inProgress.length && stageCounts[topStage] > 0) {
+      insightsHtml += '<div class="status-insight-line">현재 진행 중 문의 <b>' + inProgress.length.toLocaleString() + '건</b> 중 <b>' + (stageCounts[topStage] / inProgress.length * 100).toFixed(0) + '%</b>가 \'' + (STAGE_LABELS_REQ[topStage] || topStage) + '\' 단계에 있습니다.</div>';
     }
-    stallInsights.slice(0, 2).forEach(function (s) { insightsHtml += '<div class="status-insight-line">' + s + '</div>'; });
+    stallInsights.slice(0, 3).forEach(function (s) { insightsHtml += '<div class="status-insight-line">' + s + '</div>'; });
     document.getElementById('statusInsights').innerHTML = insightsHtml;
-
-    function pct2(n, d) { return d ? (n / d * 100).toFixed(0) : '0'; }
-
-    window._statusData = { contracted: contracted, unqualified: unqualified, inProgress: inProgress, now: now };
   }
 
   document.getElementById('statusOutcomeRow') && document.getElementById('statusCard').addEventListener('click', function (e) {
@@ -1331,21 +1410,21 @@ function initDashboard() {
     var kind = btn.getAttribute('data-drill');
     var key = btn.getAttribute('data-key');
     if (kind === 'outcome') {
-      if (key === 'contracted') openStatusDrill('계약 ' + d.contracted.length.toLocaleString() + '건', '전체 문의 중 계약 전환된 건', d.contracted);
-      else if (key === 'unqualified') openStatusDrill('미전환 ' + d.unqualified.length.toLocaleString() + '건', '전체 문의 중 미전환 처리된 건', d.unqualified);
-      else openStatusDrill('진행 중 ' + d.inProgress.length.toLocaleString() + '건', '아직 계약/미전환으로 종결되지 않은 문의', d.inProgress);
-    } else if (kind === 'phase') {
-      var rows = d.inProgress.filter(function (r) { return r[REQ_IDX.phase] === key; });
-      openStatusDrill(PHASE_LABELS[key] + ' ' + rows.length.toLocaleString() + '건', '진행 중 문의 중 해당 단계', rows);
+      if (key === 'contracted') openStatusDrill('계약 ' + d.contracted.length.toLocaleString() + '건', '선택 기간 내 문의 중 계약 전환된 건', d.contracted);
+      else if (key === 'unqualified') openStatusDrill('미전환 ' + d.unqualified.length.toLocaleString() + '건', '선택 기간 내 문의 중 미전환 처리된 건', d.unqualified);
+      else openStatusDrill('진행 중 ' + d.inProgress.length.toLocaleString() + '건', '선택 기간 내 문의 중 아직 계약/미전환으로 종결되지 않은 건', d.inProgress);
+    } else if (kind === 'stage') {
+      var rows = d.allInProgress.filter(function (r) { return (r[REQ_IDX.stage] || 'unknown') === key; });
+      openStatusDrill((STAGE_LABELS_REQ[key] || key) + ' ' + rows.length.toLocaleString() + '건', '현재 진행 중 문의 중 해당 단계 (기간 필터 무관)', rows);
     } else if (kind === 'stall') {
       var mode = btn.getAttribute('data-mode'), th = parseFloat(btn.getAttribute('data-th'));
-      var base = d.inProgress.filter(function (r) { return r[REQ_IDX.phase] === key; });
+      var base = d.allInProgress.filter(function (r) { return (r[REQ_IDX.stage] || 'unknown') === key; });
       var rows2 = base.filter(function (r) {
         if (mode === 'nocontact') return !r[REQ_IDX.contact] && daysSince(r[REQ_IDX.inquiry], d.now) >= th;
         return daysSince(r[REQ_IDX.inquiry], d.now) >= th;
       });
       var subLabel = mode === 'nocontact' ? '24시간 이상 미연락' : th + '일 이상 정체 (문의 접수 후 경과일 기준)';
-      openStatusDrill(PHASE_LABELS[key] + ' · ' + subLabel, rows2.length.toLocaleString() + '건', rows2);
+      openStatusDrill((STAGE_LABELS_REQ[key] || key) + ' · ' + subLabel, rows2.length.toLocaleString() + '건', rows2);
     }
   });
 
@@ -1353,24 +1432,21 @@ function initDashboard() {
     document.getElementById('statusDrillCard').style.display = 'none';
   });
 
-  function renderSparkline(container, values) {
-    var w = 280, h = 64, pad = 4;
-    var max = Math.max.apply(null, values.concat([1]));
-    var min = Math.min.apply(null, values.concat([0]));
-    var range = (max - min) || 1;
-    var stepX = (w - pad * 2) / Math.max(values.length - 1, 1);
-    var pts = values.map(function (v, i) {
-      var x = pad + i * stepX;
-      var y = h - pad - ((v - min) / range) * (h - pad * 2);
-      return x.toFixed(1) + ',' + y.toFixed(1);
-    });
-    var last = pts[pts.length - 1].split(',');
-    container.innerHTML =
-      '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="width:100%;height:100%;overflow:visible;">' +
-      '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--highlight)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>' +
-      '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="4" fill="var(--highlight)"/>' +
-      '</svg>';
-  }
+  document.getElementById('dashPresetSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button'); if (!btn) return;
+    Array.prototype.forEach.call(document.querySelectorAll('#dashPresetSeg button'), function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    dashState.preset = btn.getAttribute('data-preset');
+    document.getElementById('dashCustomRange').style.display = dashState.preset === 'custom' ? 'inline-flex' : 'none';
+    if (dashState.preset === 'custom') {
+      var full = reqDateRangeFull();
+      document.getElementById('dashDateStart').value = dashState.customStart || fmtDate(full[0]);
+      document.getElementById('dashDateEnd').value = dashState.customEnd || fmtDate(full[1]);
+    }
+    renderDashboard();
+  });
+  document.getElementById('dashDateStart').addEventListener('change', function (e) { dashState.customStart = e.target.value; renderDashboard(); });
+  document.getElementById('dashDateEnd').addEventListener('change', function (e) { dashState.customEnd = e.target.value; renderDashboard(); });
 
   function renderMonthlyChart(container, rows, getDateStr, start12) {
     var groups = {}, order = [];
