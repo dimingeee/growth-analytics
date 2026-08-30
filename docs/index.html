@@ -298,6 +298,7 @@
   /* integrated status block: 전환/미전환 -> phase -> stagnation */
   .status-card { display: flex; flex-direction: column; gap: 4px; padding: 26px 28px 24px; }
   .status-block { padding: 6px 0; }
+  .status-panel-eyebrow { font-size: 11.5px; font-weight: 700; color: var(--accent-ink); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 16px; }
   .status-block-title { font-size: 14.5px; font-weight: 700; color: var(--ink); margin-bottom: 14px; }
   .status-arrow { text-align: center; color: var(--ink-3); font-size: 15px; line-height: 1; margin: -2px 0; }
 
@@ -517,13 +518,22 @@
         <span id="dashCustomRange" style="display:none; gap:8px; align-items:center;" class="filter-row">
           <input type="date" id="dashDateStart"> <span class="arrow">→</span> <input type="date" id="dashDateEnd">
         </span>
-        <span class="filter-note">기준일: 문의 접수일 · KPI·문의 현황 전체에 적용됩니다</span>
+        <span class="filter-note">기준일: 문의 접수일 · 아래 KPI·문의 현황 전체에 적용됩니다</span>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">담당자</span>
+        <span class="filter-note">전체 (문의 단계에는 담당자 데이터가 아직 없습니다 — 계약 이후 사건 담당자는 "통계 → 담당자별 보기"에서 확인)</span>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">분석 단위</span>
+        <span class="filter-note">Request (문의 기준) — 계약 이후 사건 진행 분석은 "통계"에서 별도 확인</span>
       </div>
     </section>
 
     <section class="kpi-grid kpi-grid-dash" id="dashKpiGrid"></section>
 
     <section class="card status-card" id="statusCard">
+      <div class="status-panel-eyebrow">문의 현황</div>
       <div class="status-block">
         <div class="status-block-title">문의는 현재 어떻게 되었나? · <span id="statusPeriodLabel" class="status-period-label"></span></div>
         <div class="status-outcome-row" id="statusOutcomeRow"></div>
@@ -576,16 +586,6 @@
       <div class="status-insights" id="timeToContractInsight"></div>
     </section>
 
-    <section class="card" id="funnelCard">
-      <div class="card-head">
-        <div>
-          <div class="card-title">문의는 계약까지 어디서 가장 많이 이탈하나?</div>
-          <div class="card-title-sub" id="funnelSub">문의 접수 → 첫 연락 → 첫 견적 → 계약 (상담 진입은 신뢰 가능한 시각 기록이 없어 퍼널에서 제외)</div>
-        </div>
-      </div>
-      <div id="funnelSteps"></div>
-    </section>
-
     <section class="card" id="unqualCard">
       <div class="card-head">
         <div>
@@ -602,12 +602,29 @@
       <div class="status-block-title">지금 무엇을 해야 하나? <span class="status-period-label">· 현재 시점 전체</span></div>
       <div id="actionCenterGrid" class="action-grid"></div>
     </section>
+  </div>
+
+  <div id="statsContent" style="display:none;">
+  <div style="display:flex; justify-content:flex-end;">
+    <button class="btn-download" id="downloadBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M5 21h14"/></svg>데이터 다운로드</button>
+  </div>
+  <div id="viewSingle">
+    <div id="statsMainCards">
+    <section class="card" id="funnelCard">
+      <div class="card-head">
+        <div>
+          <div class="card-title">문의는 계약까지 어디서 가장 많이 이탈하나?</div>
+          <div class="card-title-sub" id="funnelSub">문의 접수 → 첫 연락 → 첫 견적 → 계약 (상담 진입은 신뢰 가능한 시각 기록이 없어 퍼널에서 제외) · 전체 스냅샷</div>
+        </div>
+      </div>
+      <div id="funnelSteps"></div>
+    </section>
 
     <section class="card">
       <div class="card-head">
         <div>
           <div class="card-title">문의 · 계약 추이</div>
-          <div class="card-title-sub">최근 12개월 · 월별</div>
+          <div class="card-title-sub">최근 12개월 · 월별 · 전체 스냅샷</div>
         </div>
       </div>
       <div class="charts-2col">
@@ -632,14 +649,7 @@
         <div id="dashChannelChart"></div>
       </div>
     </section>
-  </div>
 
-  <div id="statsContent" style="display:none;">
-  <div style="display:flex; justify-content:flex-end;">
-    <button class="btn-download" id="downloadBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M5 21h14"/></svg>데이터 다운로드</button>
-  </div>
-  <div id="viewSingle">
-    <div id="statsMainCards">
     <section class="kpi-grid" id="kpiGrid"></section>
 
     <section class="card">
@@ -712,10 +722,9 @@
     </div>
   </div>
   </div>
-  </div>
 
   <div style="text-align:right;">
-    <button type="button" id="dataNotesToggle" class="link-toggle">이 스냅샷을 읽을 때 참고할 점 보기</button>
+    <button type="button" id="dataNotesToggle" class="link-toggle">분석 기준 · 데이터 계산 방식 보기</button>
   </div>
   <section class="callout" id="dataNotesCallout" style="display:none;">
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -724,7 +733,7 @@
       <circle cx="10" cy="14.4" r="1" fill="var(--warn)"/>
     </svg>
     <div>
-      <h3>이 스냅샷을 읽을 때 참고할 점</h3>
+      <h3>분석 기준 · 데이터 계산 방식</h3>
       <ul>
         <li><b>"분석 단위"를 반드시 확인하세요.</b> <b>요청 단위</b>는 문의 2,960건 전체가 모수라 초기 퍼널(문의→연락→견적→계약)에 적합하고, <b>사건 단위</b>는 실제로 사건이 개설된 995건만 대상이라 계약 이후 진행 단계(수임~등록)에만 써야 합니다. 사건 단위로 "문의→계약"을 보면 모수가 작아 전환율이 왜곡됩니다.</li>
         <li>사건 단위의 세부 진행 단계(명세서 작성 중, 초안 송부, OA 대응 등)는 <code class="k">case_stage_histories</code> 로그에서 각 단계에 처음 도달한 시각을 뽑은 것입니다. 로그가 없는 사건은 해당 단계가 "미도달"로 잡힐 수 있습니다.</li>
@@ -735,6 +744,7 @@
       </ul>
     </div>
   </section>
+  </div>
 
   <footer class="font-mono">
     <span>role <code>bassip_ai_reader</code> · read-only · 매일 08:00(KST) 자동 갱신 · 마지막 갱신: 2026-08-26 11:14 KST (수동)</span>
@@ -1418,8 +1428,8 @@ function initDashboard() {
 
     var kpiHtml = '';
     kpiHtml += '<div class="kpi"><div class="kpi-label">' + icoInbox + '전체 문의</div><div class="kpi-value font-mono">' + s.total.toLocaleString() + '건</div>' + cmpLine(s.total, ps ? ps.total : null) + '</div>';
-    kpiHtml += '<div class="kpi highlight" title="선택 기간 내 접수된 Request 중 계약(phase=contracted)된 Request 비율"><div class="kpi-label">' + icoTarget + '계약 전환율</div><div class="kpi-value font-mono">' + s.contractRate.toFixed(1) + '%</div><div class="kpi-sub">' + s.contracted.length.toLocaleString() + '건</div>' + cmpLine(s.contractRate, ps ? ps.contractRate : null, { pp: true }) + '</div>';
-    kpiHtml += '<div class="kpi" title="선택 기간 내 접수된 Request 중 미전환(phase=unqualified) 처리된 Request 비율"><div class="kpi-label">' + icoX + '미전환율</div><div class="kpi-value font-mono">' + s.unqualRate.toFixed(1) + '%</div><div class="kpi-sub">' + s.unqualified.length.toLocaleString() + '건</div>' + cmpLine(s.unqualRate, ps ? ps.unqualRate : null, { pp: true }) + '</div>';
+    kpiHtml += '<div class="kpi highlight" title="선택 기간 내 접수된 Request 중 계약(phase=contracted)된 Request 비율"><div class="kpi-label">' + icoTarget + '계약</div><div class="kpi-value font-mono">' + s.contracted.length.toLocaleString() + '건</div><div class="kpi-sub">' + s.contractRate.toFixed(1) + '%</div>' + cmpLine(s.contractRate, ps ? ps.contractRate : null, { pp: true }) + '</div>';
+    kpiHtml += '<div class="kpi" title="선택 기간 내 접수된 Request 중 미전환(phase=unqualified) 처리된 Request 비율"><div class="kpi-label">' + icoX + '미전환</div><div class="kpi-value font-mono">' + s.unqualified.length.toLocaleString() + '건</div><div class="kpi-sub">' + s.unqualRate.toFixed(1) + '%</div>' + cmpLine(s.unqualRate, ps ? ps.unqualRate : null, { pp: true }) + '</div>';
     kpiHtml += '<div class="kpi"><div class="kpi-label">' + icoFolder + '진행 중</div><div class="kpi-value font-mono">' + s.inProgress.length.toLocaleString() + '건</div><div class="kpi-sub">' + s.inProgressRate.toFixed(1) + '%</div>' + cmpLine(s.inProgress.length, ps ? ps.inProgress.length : null, { unit: '건' }) + '</div>';
     kpiHtml += '<div class="kpi" title="Request 생성 시각부터 최초 outbound communication까지의 시간 (중앙값)"><div class="kpi-label">' + icoClock + '첫 연락 중앙시간</div><div class="kpi-value font-mono">' + (s.medContactHours != null ? (s.medContactHours < 48 ? s.medContactHours.toFixed(1) + '시간' : (s.medContactHours / 24).toFixed(1) + '일') : '—') + '</div>' + cmpLine(s.medContactHours, ps ? ps.medContactHours : null, { decimals: 1, unit: '시간' }) + '</div>';
     kpiHtml += '<div class="kpi" title="Request 생성 시각부터 최초 계약 시각까지 (중앙값, 계약 건 기준)"><div class="kpi-label">' + icoCalendar + '문의→계약 중앙 소요일</div><div class="kpi-value font-mono">' + (s.medContractDays != null ? s.medContractDays.toFixed(1) + '일' : '—') + '</div>' + cmpLine(s.medContractDays, ps ? ps.medContractDays : null, { decimals: 1, unit: '일' }) + '</div>';
@@ -1442,9 +1452,14 @@ function initDashboard() {
 
     renderContactSpeed(rows, pLabel);
     renderTimeToContract(rows, pLabel);
-    renderFunnel(rows);
     renderUnqualified(rows, pLabel);
     renderActionCenter();
+  }
+
+  // 통계 화면에 있는, 기간 필터와 무관한 전체 스냅샷 개요(퍼널/추이/분포) — 한 번만 렌더
+  function renderStatsOverview() {
+    var now = new Date();
+    renderFunnel(REQ);
 
     var start12 = monthStart(addMonthsUTC(now, -11));
     renderMonthlyChart(document.getElementById('dashTrendChart'), REQ, function (r) { return r[REQ_IDX.inquiry]; }, start12);
@@ -2149,12 +2164,13 @@ function initDashboard() {
     var box = document.getElementById('dataNotesCallout');
     var open = box.style.display !== 'none';
     box.style.display = open ? 'none' : 'flex';
-    this.textContent = (open ? '이 스냅샷을 읽을 때 참고할 점 보기' : '참고할 점 접기');
+    this.textContent = (open ? '분석 기준 · 데이터 계산 방식 보기' : '접기');
   });
 
   populateStageSelects();
   refreshDateInputs();
   renderDashboard();
+  renderStatsOverview();
 }
 </script>
 
