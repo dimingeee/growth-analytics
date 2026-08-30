@@ -170,6 +170,7 @@
     .kpi-hero .kpi-spark-wrap { max-width: none; width: 100%; }
   }
   .dash-mini-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .dash-mini-grid.dash-mini-grid-2 { grid-template-columns: repeat(2, 1fr); }
   @media (max-width: 900px) {
     .dash-mini-grid { grid-template-columns: 1fr; }
   }
@@ -293,6 +294,63 @@
     .charts-2col { grid-template-columns: 1fr; }
     .filter-label { width: auto; }
   }
+
+  /* integrated status block: 전환/미전환 -> phase -> stagnation */
+  .status-card { display: flex; flex-direction: column; gap: 4px; padding: 26px 28px 24px; }
+  .status-block { padding: 6px 0; }
+  .status-block-title { font-size: 14.5px; font-weight: 700; color: var(--ink); margin-bottom: 14px; }
+  .status-arrow { text-align: center; color: var(--ink-3); font-size: 15px; line-height: 1; margin: -2px 0; }
+
+  .status-outcome-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .status-outcome-item {
+    border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; background: var(--surface-2);
+    display: flex; flex-direction: column; gap: 4px; cursor: pointer; text-align: left; font-family: inherit;
+    appearance: none;
+  }
+  .status-outcome-item:hover { filter: brightness(0.98); }
+  .status-outcome-item.good { border-left: 4px solid var(--accent); }
+  .status-outcome-item.bad { border-left: 4px solid var(--brick); }
+  .status-outcome-item.neutral { border-left: 4px solid var(--highlight); }
+  .status-outcome-label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+  .status-outcome-value { font-size: 24px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .status-outcome-sub { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  @media (max-width: 760px) { .status-outcome-row { grid-template-columns: 1fr; } }
+
+  .status-phase-row {
+    display: grid; grid-template-columns: 96px 1fr 70px; align-items: center; gap: 12px;
+    padding: 7px 4px; border-radius: 8px; cursor: pointer; appearance: none; border: none; background: transparent;
+    font-family: inherit; width: 100%; text-align: left;
+  }
+  .status-phase-row:hover { background: var(--surface-2); }
+  .status-phase-name { font-size: 13px; font-weight: 600; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .status-phase-track { position: relative; height: 20px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
+  .status-phase-fill { position: absolute; top: 0; left: 0; height: 100%; background: var(--accent); border-radius: 5px; }
+  .status-phase-row.top .status-phase-fill { background: var(--highlight); }
+  .status-phase-count { font-size: 13px; font-weight: 700; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+  .status-phase-top-note { font-size: 12.5px; color: var(--highlight-ink); font-weight: 600; margin-top: 10px; }
+
+  .status-stall-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .status-stall-card { border: 1px solid var(--border); border-radius: 10px; padding: 13px 14px; display: flex; flex-direction: column; gap: 7px; }
+  .status-stall-card.warn { border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); background: var(--warn-tint); }
+  .status-stall-card.brick { border-color: color-mix(in srgb, var(--brick) 40%, var(--border)); background: color-mix(in srgb, var(--brick) 8%, var(--surface)); }
+  .status-stall-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .status-stall-name { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .status-stall-count { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .status-stall-median { font-size: 12px; color: var(--ink-2); }
+  .status-stall-thresholds { display: flex; flex-direction: column; gap: 3px; }
+  .status-stall-btn {
+    appearance: none; border: none; background: transparent; font-family: inherit; text-align: left; cursor: pointer;
+    font-size: 12.5px; color: var(--ink-2); padding: 2px 4px; border-radius: 5px; display: flex; justify-content: space-between; gap: 6px;
+  }
+  .status-stall-btn:hover { background: rgba(0,0,0,.05); }
+  .status-stall-btn b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .status-stall-btn.hot b { color: var(--brick); }
+  .status-stall-empty { font-size: 12.5px; color: var(--ink-3); padding: 4px; }
+
+  .status-stall-note { font-size: 11.5px; color: var(--ink-3); margin-top: 12px; }
+  .status-insights { display: flex; flex-direction: column; gap: 5px; margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--border); }
+  .status-insight-line { font-size: 13px; color: var(--ink-2); }
+  .status-insight-line b { color: var(--ink); }
 </style>
 
 
@@ -320,7 +378,7 @@
   <aside class="filters-sidebar">
   <div class="filters-sidebar-inner">
     <div class="nav-links" id="sectionSeg">
-      <button data-section="dashboard" class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>대시보드</button>
+      <button data-section="dashboard" class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>요약</button>
       <button data-section="stats"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg>통계</button>
     </div>
 
@@ -397,6 +455,36 @@
     <section class="kpi-hero" id="dashKpiHero"></section>
     <section class="kpi-grid" id="dashKpiGrid"></section>
 
+    <section class="card status-card" id="statusCard">
+      <div class="status-block">
+        <div class="status-block-title">문의는 최종적으로 어떻게 되었나?</div>
+        <div class="status-outcome-row" id="statusOutcomeRow"></div>
+      </div>
+      <div class="status-arrow" aria-hidden="true">↓</div>
+      <div class="status-block">
+        <div class="status-block-title">현재 진행 중 문의는 어디에 쌓여 있나?</div>
+        <div id="statusPhaseBars"></div>
+      </div>
+      <div class="status-arrow" aria-hidden="true">↓</div>
+      <div class="status-block">
+        <div class="status-block-title">어느 단계에서 오래 멈춰 있나?</div>
+        <div id="statusStallGrid" class="status-stall-grid"></div>
+        <div class="status-stall-note">체류일은 단계 진입 시각 기록이 없어 <b>문의 접수일 기준 경과일</b>로 근사한 값입니다.</div>
+      </div>
+      <div class="status-insights" id="statusInsights"></div>
+    </section>
+
+    <section class="card" id="statusDrillCard" style="display:none;">
+      <div class="card-head">
+        <div>
+          <div class="card-title" id="statusDrillTitle"></div>
+          <div class="card-title-sub" id="statusDrillSub"></div>
+        </div>
+        <button type="button" class="link-toggle" id="statusDrillClose">닫기</button>
+      </div>
+      <div class="table-scroll"><table id="statusDrillTable"></table></div>
+    </section>
+
     <section class="card">
       <div class="card-head">
         <div>
@@ -416,7 +504,7 @@
       </div>
     </section>
 
-    <section class="dash-mini-grid">
+    <section class="dash-mini-grid dash-mini-grid-2">
       <div class="card">
         <div class="card-head"><div><div class="card-title">IP 유형별 문의</div><div class="card-title-sub">전체 스냅샷</div></div></div>
         <div id="dashIpChart"></div>
@@ -424,10 +512,6 @@
       <div class="card">
         <div class="card-head"><div><div class="card-title">유입 채널</div><div class="card-title-sub">전체 스냅샷</div></div></div>
         <div id="dashChannelChart"></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><div><div class="card-title">현재 상태 분포</div><div class="card-title-sub">전체 스냅샷</div></div></div>
-        <div id="dashPhaseChart"></div>
       </div>
     </section>
   </div>
@@ -1093,14 +1177,181 @@ function initDashboard() {
 
     var IP_LABELS = { '특허': '특허', '상표': '상표', '디자인': '디자인', '기타': '기타' };
     var CHANNEL_LABELS = { web: '웹', phone: '전화', referral: '추천', kakao: '카카오톡', email: '이메일', additional_retainer: '추가 위임', '': '(미기록)' };
-    var DASH_PHASE_LABELS = {
-      inquiry: '문의 접수', consulting: '상담 중', review_report: '검토 중',
-      future_consideration: '보류', contracted: '계약 전환', unqualified: '미전환'
-    };
     renderDistributionChart(document.getElementById('dashIpChart'), REQ, function (r) { return r[REQ_IDX.category]; }, IP_LABELS);
     renderDistributionChart(document.getElementById('dashChannelChart'), REQ, function (r) { return r[REQ_IDX.channel]; }, CHANNEL_LABELS);
-    renderDistributionChart(document.getElementById('dashPhaseChart'), REQ, function (r) { return r[REQ_IDX.phase]; }, DASH_PHASE_LABELS);
+
+    renderStatusBlock();
   }
+
+  // ---- 문의 현황 통합 블록: 전환/미전환 -> 진행 중 Phase -> 정체 ----
+  var IN_PROGRESS_PHASES = ['inquiry', 'consulting', 'review_report', 'future_consideration'];
+  var PHASE_LABELS = {
+    inquiry: '신규 문의', consulting: '상담 중', review_report: '검토 중',
+    future_consideration: '보류', contracted: '계약 전환', unqualified: '미전환'
+  };
+  var STALL_THRESHOLDS = [3, 7, 14, 30];
+
+  function daysSince(dateStr, now) {
+    var d = parseISO(dateStr);
+    if (!d) return null;
+    return (now.getTime() - d.getTime()) / 86400000;
+  }
+
+  function medianOf(arr) {
+    if (!arr.length) return null;
+    var s = arr.slice().sort(function (a, b) { return a - b; });
+    var mid = Math.floor(s.length / 2);
+    return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+  }
+
+  function statusRows(rows) {
+    var thead = '<thead><tr><th>ID</th><th>카테고리</th><th>채널</th><th>문의일</th><th>단계</th><th>경과일</th></tr></thead>';
+    var now = new Date();
+    var tbody = '<tbody>';
+    rows.slice(0, 300).forEach(function (r) {
+      var d = daysSince(r[REQ_IDX.inquiry], now);
+      tbody += '<tr><td>' + escapeHtml(r[REQ_IDX.id]) + '</td><td>' + escapeHtml(r[REQ_IDX.category] || '—') + '</td>' +
+        '<td>' + escapeHtml(r[REQ_IDX.channel] || '—') + '</td><td>' + (parseISO(r[REQ_IDX.inquiry]) ? fmtDate(parseISO(r[REQ_IDX.inquiry])) : '—') + '</td>' +
+        '<td>' + (PHASE_LABELS[r[REQ_IDX.phase]] || r[REQ_IDX.phase] || '—') + '</td>' +
+        '<td class="num font-mono">' + (d != null ? d.toFixed(0) + '일' : '—') + '</td></tr>';
+    });
+    tbody += '</tbody>';
+    if (rows.length > 300) tbody += '<tfoot><tr><td colspan="6" style="color:var(--ink-3); text-align:center;">외 ' + (rows.length - 300).toLocaleString() + '건 더 있음 — 데이터 다운로드로 전체 확인</td></tr></tfoot>';
+    return thead + tbody;
+  }
+
+  function openStatusDrill(title, sub, rows) {
+    document.getElementById('statusDrillTitle').textContent = title;
+    document.getElementById('statusDrillSub').textContent = sub;
+    document.getElementById('statusDrillTable').innerHTML = statusRows(rows);
+    var card = document.getElementById('statusDrillCard');
+    card.style.display = '';
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function renderStatusBlock() {
+    var now = new Date();
+    var total = REQ.length;
+    var contracted = REQ.filter(function (r) { return r[REQ_IDX.phase] === 'contracted'; });
+    var unqualified = REQ.filter(function (r) { return r[REQ_IDX.phase] === 'unqualified'; });
+    var inProgress = REQ.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; });
+
+    function pct(n) { return total ? (n / total * 100) : 0; }
+
+    var outcomeHtml = '';
+    outcomeHtml += '<button type="button" class="status-outcome-item good" data-drill="outcome" data-key="contracted">' +
+      '<span class="status-outcome-label">계약</span><span class="status-outcome-value font-mono">' + contracted.length.toLocaleString() + '건</span>' +
+      '<span class="status-outcome-sub">' + pct(contracted.length).toFixed(1) + '%</span></button>';
+    outcomeHtml += '<button type="button" class="status-outcome-item bad" data-drill="outcome" data-key="unqualified">' +
+      '<span class="status-outcome-label">미전환</span><span class="status-outcome-value font-mono">' + unqualified.length.toLocaleString() + '건</span>' +
+      '<span class="status-outcome-sub">' + pct(unqualified.length).toFixed(1) + '%</span></button>';
+    outcomeHtml += '<button type="button" class="status-outcome-item neutral" data-drill="outcome" data-key="inprogress">' +
+      '<span class="status-outcome-label">진행 중</span><span class="status-outcome-value font-mono">' + inProgress.length.toLocaleString() + '건</span>' +
+      '<span class="status-outcome-sub">' + pct(inProgress.length).toFixed(1) + '%</span></button>';
+    document.getElementById('statusOutcomeRow').innerHTML = outcomeHtml;
+
+    var phaseCounts = {};
+    IN_PROGRESS_PHASES.forEach(function (p) { phaseCounts[p] = 0; });
+    inProgress.forEach(function (r) { var p = r[REQ_IDX.phase]; if (phaseCounts[p] !== undefined) phaseCounts[p]++; });
+    var phaseOrder = IN_PROGRESS_PHASES.slice().sort(function (a, b) { return phaseCounts[b] - phaseCounts[a]; });
+    var maxPhaseCount = Math.max.apply(null, phaseOrder.map(function (p) { return phaseCounts[p]; }).concat([1]));
+    var topPhase = phaseOrder[0];
+
+    var phaseHtml = '';
+    phaseOrder.forEach(function (p, i) {
+      var c = phaseCounts[p];
+      var w = maxPhaseCount ? (c / maxPhaseCount * 100) : 0;
+      phaseHtml += '<button type="button" class="status-phase-row' + (i === 0 && c > 0 ? ' top' : '') + '" data-drill="phase" data-key="' + p + '">' +
+        '<span class="status-phase-name">' + PHASE_LABELS[p] + '</span>' +
+        '<span class="status-phase-track"><span class="status-phase-fill" style="width:' + w.toFixed(1) + '%"></span></span>' +
+        '<span class="status-phase-count font-mono">' + c.toLocaleString() + '건</span></button>';
+    });
+    if (inProgress.length && phaseCounts[topPhase] > 0) {
+      phaseHtml += '<div class="status-phase-top-note">현재 진행 중 문의 중 가장 많은 건이 \'' + PHASE_LABELS[topPhase] + '\' 단계에 있습니다.</div>';
+    }
+    document.getElementById('statusPhaseBars').innerHTML = phaseHtml || '<div class="empty-state">진행 중인 문의가 없습니다.</div>';
+
+    var stallHtml = '';
+    var stallInsights = [];
+    phaseOrder.forEach(function (p) {
+      var rows = inProgress.filter(function (r) { return r[REQ_IDX.phase] === p; });
+      if (!rows.length) return;
+      var elapsed = rows.map(function (r) { return daysSince(r[REQ_IDX.inquiry], now); }).filter(function (v) { return v != null; });
+      var med = medianOf(elapsed);
+
+      if (p === 'inquiry') {
+        var noContact = rows.filter(function (r) { return !r[REQ_IDX.contact]; });
+        var over24h = noContact.filter(function (r) { var d = daysSince(r[REQ_IDX.inquiry], now); return d != null && d >= 1; });
+        var cardCls = over24h.length > 0 ? ' warn' : '';
+        stallHtml += '<div class="status-stall-card' + cardCls + '">' +
+          '<div class="status-stall-head"><span class="status-stall-name">' + PHASE_LABELS[p] + '</span><span class="status-stall-count">현재 ' + rows.length.toLocaleString() + '건</span></div>' +
+          '<div class="status-stall-thresholds">' +
+          '<button type="button" class="status-stall-btn' + (over24h.length ? ' hot' : '') + '" data-drill="stall" data-key="' + p + '" data-mode="nocontact" data-th="1">' +
+          '<span>24시간 이상 미연락</span><b>' + over24h.length.toLocaleString() + '건</b></button>' +
+          '</div></div>';
+        if (over24h.length) stallInsights.push('신규 문의 ' + rows.length.toLocaleString() + '건 중 ' + over24h.length.toLocaleString() + '건은 24시간 이상 최초 연락 기록이 없습니다.');
+        return;
+      }
+
+      var overCounts = STALL_THRESHOLDS.map(function (th) {
+        return rows.filter(function (r) { var d = daysSince(r[REQ_IDX.inquiry], now); return d != null && d >= th; }).length;
+      });
+      var worstOver = overCounts[2]; // 14일 이상 기준으로 경고색 판단
+      var cardCls2 = worstOver > 0 ? (overCounts[3] > 0 ? ' brick' : ' warn') : '';
+      stallHtml += '<div class="status-stall-card' + cardCls2 + '">' +
+        '<div class="status-stall-head"><span class="status-stall-name">' + PHASE_LABELS[p] + '</span><span class="status-stall-count">현재 ' + rows.length.toLocaleString() + '건</span></div>' +
+        '<div class="status-stall-median">중앙 경과일 ' + (med != null ? med.toFixed(1) + '일' : '—') + '</div>' +
+        '<div class="status-stall-thresholds">' +
+        STALL_THRESHOLDS.map(function (th, i) {
+          return '<button type="button" class="status-stall-btn' + (overCounts[i] > 0 && th >= 14 ? ' hot' : '') + '" data-drill="stall" data-key="' + p + '" data-mode="days" data-th="' + th + '">' +
+            '<span>' + th + '일 이상</span><b>' + overCounts[i].toLocaleString() + '건</b></button>';
+        }).join('') +
+        '</div></div>';
+      if (overCounts[1] > 0) stallInsights.push(PHASE_LABELS[p] + ' ' + rows.length.toLocaleString() + '건 중 ' + overCounts[1].toLocaleString() + '건이 7일 이상 정체되어 있습니다.');
+    });
+    document.getElementById('statusStallGrid').innerHTML = stallHtml || '<div class="status-stall-empty">정체 데이터가 없습니다.</div>';
+
+    var insightsHtml = '';
+    if (inProgress.length && phaseCounts[topPhase] > 0) {
+      insightsHtml += '<div class="status-insight-line">현재 진행 중 문의 <b>' + inProgress.length.toLocaleString() + '건</b> 중 <b>' + pct2(phaseCounts[topPhase], inProgress.length) + '%</b>가 \'' + PHASE_LABELS[topPhase] + '\' 단계에 있습니다.</div>';
+    }
+    stallInsights.slice(0, 2).forEach(function (s) { insightsHtml += '<div class="status-insight-line">' + s + '</div>'; });
+    document.getElementById('statusInsights').innerHTML = insightsHtml;
+
+    function pct2(n, d) { return d ? (n / d * 100).toFixed(0) : '0'; }
+
+    window._statusData = { contracted: contracted, unqualified: unqualified, inProgress: inProgress, now: now };
+  }
+
+  document.getElementById('statusOutcomeRow') && document.getElementById('statusCard').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-drill]');
+    if (!btn) return;
+    var d = window._statusData;
+    if (!d) return;
+    var kind = btn.getAttribute('data-drill');
+    var key = btn.getAttribute('data-key');
+    if (kind === 'outcome') {
+      if (key === 'contracted') openStatusDrill('계약 ' + d.contracted.length.toLocaleString() + '건', '전체 문의 중 계약 전환된 건', d.contracted);
+      else if (key === 'unqualified') openStatusDrill('미전환 ' + d.unqualified.length.toLocaleString() + '건', '전체 문의 중 미전환 처리된 건', d.unqualified);
+      else openStatusDrill('진행 중 ' + d.inProgress.length.toLocaleString() + '건', '아직 계약/미전환으로 종결되지 않은 문의', d.inProgress);
+    } else if (kind === 'phase') {
+      var rows = d.inProgress.filter(function (r) { return r[REQ_IDX.phase] === key; });
+      openStatusDrill(PHASE_LABELS[key] + ' ' + rows.length.toLocaleString() + '건', '진행 중 문의 중 해당 단계', rows);
+    } else if (kind === 'stall') {
+      var mode = btn.getAttribute('data-mode'), th = parseFloat(btn.getAttribute('data-th'));
+      var base = d.inProgress.filter(function (r) { return r[REQ_IDX.phase] === key; });
+      var rows2 = base.filter(function (r) {
+        if (mode === 'nocontact') return !r[REQ_IDX.contact] && daysSince(r[REQ_IDX.inquiry], d.now) >= th;
+        return daysSince(r[REQ_IDX.inquiry], d.now) >= th;
+      });
+      var subLabel = mode === 'nocontact' ? '24시간 이상 미연락' : th + '일 이상 정체 (문의 접수 후 경과일 기준)';
+      openStatusDrill(PHASE_LABELS[key] + ' · ' + subLabel, rows2.length.toLocaleString() + '건', rows2);
+    }
+  });
+
+  document.getElementById('statusDrillClose') && document.getElementById('statusDrillClose').addEventListener('click', function () {
+    document.getElementById('statusDrillCard').style.display = 'none';
+  });
 
   function renderSparkline(container, values) {
     var w = 280, h = 64, pad = 4;
