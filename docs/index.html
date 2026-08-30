@@ -137,14 +137,17 @@
   /* kpi */
   .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
   .kpi-grid-sm { grid-template-columns: repeat(2, 1fr); }
-  .kpi-grid-dash { grid-template-columns: repeat(4, 1fr); }
+  .kpi-grid-dash { grid-template-columns: repeat(5, 1fr); }
   .kpi-delta { font-weight: 700; }
   .kpi-delta.up { color: var(--accent-ink); }
   .kpi-delta.down { color: var(--brick); }
   .dash-hero { display: flex; flex-direction: column; gap: 4px; padding: 4px 0 8px; }
   .dash-hero h2 { margin: 0; font-size: 18px; font-weight: 700; }
   .dash-hero p { margin: 0; font-size: 13.5px; color: var(--ink-2); }
-  @media (max-width: 900px) {
+  @media (max-width: 1100px) {
+    .kpi-grid-dash { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 700px) {
     .kpi-grid-dash { grid-template-columns: repeat(2, 1fr); }
   }
 
@@ -306,6 +309,14 @@
   .mini-diff { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); font-weight: 700; text-align: center; color: var(--accent-ink); font-size: 13.5px; }
   .mini-big-value { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--ink); }
   .mini-sub { font-size: 12.5px; color: var(--ink-3); margin-top: 4px; }
+  .mini-note { font-size: 12.5px; color: var(--ink-3); margin: -4px 0 0; max-width: 90ch; }
+
+  .spark-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 700px) { .spark-row { grid-template-columns: 1fr; } }
+  .spark-widget-label { font-size: 12.5px; font-weight: 700; color: var(--ink-2); margin-bottom: 6px; }
+  .spark-widget-chart { height: 36px; }
+  .spark-widget-nums { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .spark-widget-nums span:last-child { color: var(--ink); font-weight: 700; }
   .status-block-title { font-size: 14.5px; font-weight: 700; color: var(--ink); margin-bottom: 14px; }
   .status-arrow { text-align: center; color: var(--ink-3); font-size: 15px; line-height: 1; margin: -2px 0; }
 
@@ -530,36 +541,15 @@
       <p id="dashSubtitle" class="subtitle"></p>
     </div>
 
-    <section class="filters" id="dashPeriodFilter">
-      <div class="filter-row">
-        <span class="filter-label">기간</span>
-        <div class="seg" id="dashPresetSeg">
-          <button data-preset="all" class="active">전체 기간</button>
-          <button data-preset="year">올해</button>
-          <button data-preset="12m">최근 12개월</button>
-          <button data-preset="6m">최근 6개월</button>
-          <button data-preset="3m">최근 3개월</button>
-          <button data-preset="1m">최근 1개월</button>
-          <button data-preset="custom">직접 입력</button>
-        </div>
-        <span id="dashCustomRange" style="display:none; gap:8px; align-items:center;" class="filter-row">
-          <input type="date" id="dashDateStart"> <span class="arrow">→</span> <input type="date" id="dashDateEnd">
-        </span>
-        <span class="filter-note">기준일: 문의 접수일 · 아래 KPI·문의 현황 전체에 적용됩니다</span>
-      </div>
-      <div class="filter-row">
-        <span class="filter-label">담당자</span>
-        <span class="filter-note">전체 (문의 단계에는 담당자 데이터가 아직 없습니다 — 계약 이후 사건 담당자는 "통계 → 담당자별 보기"에서 확인)</span>
-      </div>
-      <div class="filter-row">
-        <span class="filter-label">분석 단위</span>
-        <span class="filter-note">Request (문의 기준) — 계약 이후 사건 진행 분석은 "통계"에서 별도 확인</span>
-      </div>
-    </section>
-
-    <div class="section-divider">선택 기간 성과 <span class="status-period-label">· <span id="statusPeriodLabel"></span></span></div>
+    <div class="section-divider">이번 달 성과 <span class="status-period-label">· <span id="statusPeriodLabel"></span></span></div>
+    <p class="mini-note">분석 단위: Request(문의 기준) · 담당자 필터 없음(문의 단계엔 담당자 데이터가 없어 "통계 → 담당자별 보기"의 사건 기준으로 확인) · 기간을 직접 바꿔가며 분석하려면 "통계" 또는 "전환 비교"를 이용하세요.</p>
 
     <section class="kpi-grid kpi-grid-dash" id="dashKpiGrid"></section>
+
+    <section class="card">
+      <div class="card-title" style="margin-bottom:14px;">최근 3개월 추이</div>
+      <div id="trendSparkRow" class="spark-row"></div>
+    </section>
 
     <div class="section-divider">현재 Pipeline <span class="status-period-label">· 현재 시점 전체</span></div>
 
@@ -1358,8 +1348,6 @@ function initDashboard() {
     return CONTRACT_DAY_BUCKETS[CONTRACT_DAY_BUCKETS.length - 1];
   }
 
-  var dashState = { preset: 'all', customStart: null, customEnd: null };
-
   function daysSince(dateStr, now) {
     var d = parseISO(dateStr);
     if (!d) return null;
@@ -1379,46 +1367,9 @@ function initDashboard() {
     return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
   }
 
-  function reqDateRangeFull() {
-    var dates = REQ.map(function (r) { return parseISO(r[REQ_IDX.inquiry]); }).filter(Boolean);
-    if (!dates.length) { var n = new Date(); return [n, n]; }
-    return [new Date(Math.min.apply(null, dates.map(function (d) { return d.getTime(); }))),
-            new Date(Math.max.apply(null, dates.map(function (d) { return d.getTime(); })))];
-  }
-
-  function dashCurrentRange() {
-    var full = reqDateRangeFull();
-    var now = new Date();
-    if (dashState.preset === 'all') return full;
-    if (dashState.preset === 'year') return [new Date(Date.UTC(now.getUTCFullYear(), 0, 1)), now];
-    if (dashState.preset === '12m') return [monthStart(addMonthsUTC(now, -11)), now];
-    if (dashState.preset === '6m') return [monthStart(addMonthsUTC(now, -5)), now];
-    if (dashState.preset === '3m') return [monthStart(addMonthsUTC(now, -2)), now];
-    if (dashState.preset === '1m') return [monthStart(now), now];
-    if (dashState.preset === 'custom') {
-      return [dashState.customStart ? new Date(dashState.customStart) : full[0], dashState.customEnd ? new Date(dashState.customEnd) : full[1]];
-    }
-    return full;
-  }
-
-  function prevPeriodOf(range) {
-    if (dashState.preset === 'all') return null;
-    var len = range[1].getTime() - range[0].getTime();
-    if (!(len > 0)) return null;
-    return [new Date(range[0].getTime() - len), new Date(range[0].getTime() - 1)];
-  }
-
   function presetLabelOf(preset, range) {
     if (preset === 'custom') return fmtDate(range[0]) + ' ~ ' + fmtDate(range[1]);
     return PERIOD_PRESET_LABELS[preset] || '전체 기간';
-  }
-  function periodLabel(range) { return presetLabelOf(dashState.preset, range); }
-
-  function rowsInRange(range) {
-    return REQ.filter(function (r) {
-      var d = parseISO(r[REQ_IDX.inquiry]);
-      return d && d.getTime() >= range[0].getTime() && d.getTime() <= range[1].getTime();
-    });
   }
 
   function computeSummary(rows) {
@@ -1489,31 +1440,78 @@ function initDashboard() {
     var now = new Date();
     document.getElementById('dashSubtitle').textContent = '기준: ' + fmtDate(now) + ' · 요청(문의) ' + REQ.length.toLocaleString() + '건 · 사건 ' + CASES.length.toLocaleString() + '건 스냅샷';
 
-    var range = dashCurrentRange();
-    var rows = rowsInRange(range);
-    var s = computeSummary(rows);
-    var prevRange = prevPeriodOf(range);
-    var prevRows = prevRange ? rowsInRange(prevRange) : [];
-    var ps = prevRange ? computeSummary(prevRows) : null;
-    var pLabel = periodLabel(range);
-    document.getElementById('statusPeriodLabel').textContent = pLabel;
+    // 요약은 항상 "이번 달 vs 지난달 같은 날짜까지"로 고정 — 기간을 바꿔가며 보려면 통계/전환 비교를 쓴다
+    var thisMonthStart = monthStart(now);
+    var prevMonthStart = new Date(Date.UTC(thisMonthStart.getUTCFullYear(), thisMonthStart.getUTCMonth() - 1, 1));
+    var prevMonthDays = new Date(Date.UTC(prevMonthStart.getUTCFullYear(), prevMonthStart.getUTCMonth() + 1, 0)).getUTCDate();
+    var cappedDay = Math.min(now.getUTCDate(), prevMonthDays);
+    var prevMonthEnd = new Date(Date.UTC(prevMonthStart.getUTCFullYear(), prevMonthStart.getUTCMonth(), cappedDay, 23, 59, 59, 999));
+
+    function inMonth(r, start, end) {
+      var d = parseISO(r[REQ_IDX.inquiry]);
+      return d && d.getTime() >= start.getTime() && d.getTime() <= end.getTime();
+    }
+    var thisRows = REQ.filter(function (r) { return inMonth(r, thisMonthStart, now); });
+    var prevRows = REQ.filter(function (r) { return inMonth(r, prevMonthStart, prevMonthEnd); });
+    var s = computeSummary(thisRows);
+    var ps = computeSummary(prevRows);
+
+    document.getElementById('statusPeriodLabel').textContent = '이번 달 (' + fmtDate(thisMonthStart) + ' ~ ' + fmtDate(now) + ') · 지난달 동일 기간 대비';
 
     var icoInbox = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>';
     var icoTarget = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>';
     var icoX = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>';
     var icoFolder = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
+    var icoRate = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>';
 
     var kpiHtml = '';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">' + icoInbox + '전체 문의</div><div class="kpi-value font-mono">' + s.total.toLocaleString() + '건</div>' + cmpLine(s.total, ps ? ps.total : null) + '</div>';
-    kpiHtml += '<div class="kpi highlight" title="선택 기간 내 접수된 Request 중 계약(phase=contracted)된 Request 비율"><div class="kpi-label">' + icoTarget + '계약</div><div class="kpi-value font-mono">' + s.contracted.length.toLocaleString() + '건</div><div class="kpi-sub">' + s.contractRate.toFixed(1) + '%</div>' + cmpLine(s.contractRate, ps ? ps.contractRate : null, { pp: true }) + '</div>';
-    kpiHtml += '<div class="kpi" title="선택 기간 내 접수된 Request 중 미전환(phase=unqualified) 처리된 Request 비율"><div class="kpi-label">' + icoX + '미전환</div><div class="kpi-value font-mono">' + s.unqualified.length.toLocaleString() + '건</div><div class="kpi-sub">' + s.unqualRate.toFixed(1) + '%</div>' + cmpLine(s.unqualRate, ps ? ps.unqualRate : null, { pp: true }) + '</div>';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">' + icoFolder + '진행 중</div><div class="kpi-value font-mono">' + s.inProgress.length.toLocaleString() + '건</div><div class="kpi-sub">' + s.inProgressRate.toFixed(1) + '%</div>' + cmpLine(s.inProgress.length, ps ? ps.inProgress.length : null, { unit: '건' }) + '</div>';
+    kpiHtml += '<div class="kpi"><div class="kpi-label">' + icoInbox + '문의</div><div class="kpi-value font-mono">' + s.total.toLocaleString() + '건</div>' + cmpLine(s.total, ps.total, { unit: '건' }) + '</div>';
+    kpiHtml += '<div class="kpi" title="이번 달 접수된 Request 중 계약(phase=contracted)된 건수"><div class="kpi-label">' + icoTarget + '계약</div><div class="kpi-value font-mono">' + s.contracted.length.toLocaleString() + '건</div>' + cmpLine(s.contracted.length, ps.contracted.length, { unit: '건' }) + '</div>';
+    kpiHtml += '<div class="kpi" title="이번 달 접수된 Request 중 미전환(phase=unqualified) 처리된 건수"><div class="kpi-label">' + icoX + '미전환</div><div class="kpi-value font-mono">' + s.unqualified.length.toLocaleString() + '건</div>' + cmpLine(s.unqualified.length, ps.unqualified.length, { unit: '건' }) + '</div>';
+    kpiHtml += '<div class="kpi"><div class="kpi-label">' + icoFolder + '진행 중</div><div class="kpi-value font-mono">' + s.inProgress.length.toLocaleString() + '건</div>' + cmpLine(s.inProgress.length, ps.inProgress.length, { unit: '건' }) + '</div>';
+    kpiHtml += '<div class="kpi highlight" title="이번 달 접수된 Request 중 계약 비율"><div class="kpi-label">' + icoRate + '전환율</div><div class="kpi-value font-mono">' + s.contractRate.toFixed(1) + '%</div>' + cmpLine(s.contractRate, ps.contractRate, { pp: true }) + '</div>';
     document.getElementById('dashKpiGrid').innerHTML = kpiHtml;
 
+    renderTrendSparklines(now);
     renderPipelineMini();
-    renderContactSpeedMini(rows);
-    renderTimeToContractMini(rows);
-    renderUnqualTop3(rows);
+    renderContactSpeedMini(thisRows);
+    renderTimeToContractMini(thisRows);
+    renderUnqualTop3(thisRows);
+  }
+
+  function renderTrendSparklines(now) {
+    var months = [];
+    for (var i = 2; i >= 0; i--) months.push(monthStart(addMonthsUTC(now, -i)));
+    function countInMonth(getter, m) {
+      var next = addMonthsUTC(m, 1);
+      return REQ.filter(function (r) { var d = parseISO(getter(r)); return d && d.getTime() >= m.getTime() && d.getTime() < next.getTime(); }).length;
+    }
+    var inqVals = months.map(function (m) { return countInMonth(function (r) { return r[REQ_IDX.inquiry]; }, m); });
+    var conVals = months.map(function (m) { return countInMonth(function (r) { return r[REQ_IDX.contract]; }, m); });
+    var labels = months.map(function (m) { return (m.getUTCMonth() + 1) + '월'; });
+    document.getElementById('trendSparkRow').innerHTML = sparkWidget('문의', inqVals, labels) + sparkWidget('계약', conVals, labels);
+  }
+
+  function sparkWidget(label, vals, labels) {
+    return '<div class="spark-widget"><div class="spark-widget-label">' + label + ' 추이</div>' +
+      '<div class="spark-widget-chart">' + sparklineSvg(vals) + '</div>' +
+      '<div class="spark-widget-nums">' + vals.map(function (v, i) { return '<span>' + labels[i] + ' ' + v + '건</span>'; }).join('') + '</div></div>';
+  }
+
+  function sparklineSvg(values) {
+    var w = 100, h = 32, pad = 3;
+    var max = Math.max.apply(null, values.concat([1]));
+    var min = Math.min.apply(null, values.concat([0]));
+    var range = (max - min) || 1;
+    var stepX = (w - pad * 2) / Math.max(values.length - 1, 1);
+    var pts = values.map(function (v, i) {
+      var x = pad + i * stepX;
+      var y = h - pad - ((v - min) / range) * (h - pad * 2);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    });
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="width:100%;height:100%;overflow:visible;">' +
+      '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>' +
+      '</svg>';
   }
 
   // ---- 요약 전용 축약 위젯 (상세 버전은 통계에) ----
@@ -1777,22 +1775,6 @@ function initDashboard() {
   document.getElementById('statusDrillClose') && document.getElementById('statusDrillClose').addEventListener('click', function () {
     document.getElementById('statusDrillCard').style.display = 'none';
   });
-
-  document.getElementById('dashPresetSeg').addEventListener('click', function (e) {
-    var btn = e.target.closest('button'); if (!btn) return;
-    Array.prototype.forEach.call(document.querySelectorAll('#dashPresetSeg button'), function (b) { b.classList.remove('active'); });
-    btn.classList.add('active');
-    dashState.preset = btn.getAttribute('data-preset');
-    document.getElementById('dashCustomRange').style.display = dashState.preset === 'custom' ? 'inline-flex' : 'none';
-    if (dashState.preset === 'custom') {
-      var full = reqDateRangeFull();
-      document.getElementById('dashDateStart').value = dashState.customStart || fmtDate(full[0]);
-      document.getElementById('dashDateEnd').value = dashState.customEnd || fmtDate(full[1]);
-    }
-    renderDashboard();
-  });
-  document.getElementById('dashDateStart').addEventListener('change', function (e) { dashState.customStart = e.target.value; renderDashboard(); });
-  document.getElementById('dashDateEnd').addEventListener('change', function (e) { dashState.customEnd = e.target.value; renderDashboard(); });
 
   function renderMonthlyChart(container, rows, getDateStr, start12) {
     var groups = {}, order = [];
