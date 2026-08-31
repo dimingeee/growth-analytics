@@ -351,11 +351,12 @@
   .cmp2-metric { padding: 12px 0; border-bottom: 1px solid var(--border); }
   .cmp2-metric:last-child { border-bottom: none; }
   .cmp2-metric-label { font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 9px; }
-  .cmp2-bar-row { display: grid; grid-template-columns: 52px 1fr 76px; align-items: center; gap: 8px; margin-bottom: 5px; }
-  .cmp2-bar-tag { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+  .cmp2-bar-row { display: grid; grid-template-columns: 112px 1fr 76px; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .cmp2-bar-tag { font-size: 12px; font-weight: 600; color: var(--ink-2); line-height: 1.25; }
   .cmp2-bar-track { position: relative; height: 18px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
   .cmp2-bar-fill { position: absolute; top: 0; left: 0; height: 100%; border-radius: 4px; min-width: 2px; }
   .cmp2-bar-fill.good { background: var(--accent); }
+  .cmp2-bar-fill.good-alt { background: var(--highlight); }
   .cmp2-bar-fill.bad { background: var(--brick); }
   .cmp2-bar-value { font-size: 12.5px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
   .cmp2-metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
@@ -1614,9 +1615,13 @@ function initDashboard() {
     document.getElementById('pipelineMiniBars').innerHTML = html || '<div class="empty-state">진행 중인 문의가 없습니다.</div>';
   }
 
+  // 추가 위임(기존 고객의 신규 사건 접수) 채널은 문의와 첫 연락이 같은 순간 함께 기록돼
+  // 거의 전부 "24시간 이내"로 잡히고 전환율도 원래 높아, 이 카드의 "속도→계약률" 비교를 왜곡한다.
+  // 신규 문의 응대 속도를 보려는 카드이므로 이 채널은 모수에서 제외한다.
   function renderContactSpeedMini(rows) {
+    var scoped = rows.filter(function (r) { return r[REQ_IDX.channel] !== 'additional_retainer'; });
     var within = { total: 0, contracted: 0 }, after = { total: 0, contracted: 0 };
-    rows.forEach(function (r) {
+    scoped.forEach(function (r) {
       var i = parseISO(r[REQ_IDX.inquiry]), c = parseISO(r[REQ_IDX.contact]);
       if (!c) return;
       var h = (c.getTime() - i.getTime()) / 3600000;
@@ -1636,6 +1641,7 @@ function initDashboard() {
       var diff = rw - ra;
       html += '<div class="mini-diff">차이 ' + (diff >= 0 ? '+' : '') + diff.toFixed(1) + '%p</div>';
     }
+    html += '<div class="mini-note" style="margin-top:8px;">추가 위임(기존 고객 재의뢰) 제외 · 신규 문의 기준</div>';
     document.getElementById('contactSpeedMini').innerHTML = html;
   }
 
@@ -2031,25 +2037,38 @@ function initDashboard() {
     };
   }
 
-  function cmp2MetricHtml(label, leftVal, rightVal, fmt) {
+  // groups: [{tag, val, cls}, ...] — 막대 개수가 가변적(2개 또는 3개)
+  function cmp2MetricHtml(label, groups, fmt) {
     fmt = fmt || function (v) { return v == null ? '—' : v.toFixed(1); };
-    var max = Math.max(leftVal || 0, rightVal || 0, 0.0001);
-    var lw = leftVal != null ? Math.max(leftVal / max * 100, leftVal > 0 ? 2 : 0) : 0;
-    var rw = rightVal != null ? Math.max(rightVal / max * 100, rightVal > 0 ? 2 : 0) : 0;
-    return '<div class="cmp2-metric"><div class="cmp2-metric-label">' + label + '</div>' +
-      '<div class="cmp2-bar-row"><span class="cmp2-bar-tag">계약</span><div class="cmp2-bar-track"><div class="cmp2-bar-fill good" style="width:' + lw.toFixed(1) + '%"></div></div><span class="cmp2-bar-value">' + fmt(leftVal) + '</span></div>' +
-      '<div class="cmp2-bar-row"><span class="cmp2-bar-tag">미전환</span><div class="cmp2-bar-track"><div class="cmp2-bar-fill bad" style="width:' + rw.toFixed(1) + '%"></div></div><span class="cmp2-bar-value">' + fmt(rightVal) + '</span></div>' +
-      '</div>';
+    var max = Math.max.apply(null, groups.map(function (g) { return g.val || 0; }).concat([0.0001]));
+    var rows = groups.map(function (g) {
+      var w = g.val != null ? Math.max(g.val / max * 100, g.val > 0 ? 2 : 0) : 0;
+      return '<div class="cmp2-bar-row"><span class="cmp2-bar-tag">' + g.tag + '</span><div class="cmp2-bar-track"><div class="cmp2-bar-fill ' + g.cls + '" style="width:' + w.toFixed(1) + '%"></div></div><span class="cmp2-bar-value">' + fmt(g.val) + '</span></div>';
+    }).join('');
+    return '<div class="cmp2-metric"><div class="cmp2-metric-label">' + label + '</div>' + rows + '</div>';
   }
 
+  // 추가 위임(additional_retainer) 채널은 신규 문의가 아니라 기존 고객의 새 사건 접수라서,
+  // 문의일과 첫 연락 기록이 직원이 같은 순간에 함께 입력돼 항상 몇 초 차이로 붙어있다(실제 응대 속도 아님).
+  // 계약 그룹 전체 중앙값을 그대로 보여주면 이 36%가 "첫 연락 중앙시간"을 0시간 쪽으로 왜곡하므로,
+  // 계약 / 계약(추가수임 제외) / 미전환 세 그룹을 함께 보여줘 왜곡 여부가 바로 보이게 한다.
   function renderCmpContactSpeed(converted, unqualified) {
-    var c = cmpGroupStats(converted), u = cmpGroupStats(unqualified);
+    var convertedExclRetainer = converted.filter(function (r) { return r[REQ_IDX.channel] !== 'additional_retainer'; });
+    var c = cmpGroupStats(converted), cx = cmpGroupStats(convertedExclRetainer), u = cmpGroupStats(unqualified);
     var pctFmt = function (v) { return v == null ? '—' : v.toFixed(0) + '%'; };
-    var html = '<div class="cmp2-metrics-grid">' +
-      cmp2MetricHtml('첫 연락 중앙시간', c.medContactHours, u.medContactHours, fmtHours) +
-      cmp2MetricHtml('1시간 이내 연락 비율', c.pctWithin1, u.pctWithin1, pctFmt) +
-      cmp2MetricHtml('24시간 이상 소요 비율', c.pctOver24, u.pctOver24, pctFmt) +
-      cmp2MetricHtml('연락 기록 없음 비율', c.pctNoContact, u.pctNoContact, pctFmt) +
+    function groups(cVal, cxVal, uVal) {
+      return [
+        { tag: '계약', val: cVal, cls: 'good' },
+        { tag: '계약(추가수임 제외)', val: cxVal, cls: 'good-alt' },
+        { tag: '미전환', val: uVal, cls: 'bad' }
+      ];
+    }
+    var html = '<p class="mini-note" style="margin-bottom:14px;">추가 위임(기존 고객의 신규 사건 접수)은 문의와 첫 연락이 같은 시점에 함께 기록돼 응대 속도 지표를 왜곡할 수 있어 별도로 표시합니다.</p>' +
+      '<div class="cmp2-metrics-grid">' +
+      cmp2MetricHtml('첫 연락 중앙시간', groups(c.medContactHours, cx.medContactHours, u.medContactHours), fmtHours) +
+      cmp2MetricHtml('1시간 이내 연락 비율', groups(c.pctWithin1, cx.pctWithin1, u.pctWithin1), pctFmt) +
+      cmp2MetricHtml('24시간 이상 소요 비율', groups(c.pctOver24, cx.pctOver24, u.pctOver24), pctFmt) +
+      cmp2MetricHtml('연락 기록 없음 비율', groups(c.pctNoContact, cx.pctNoContact, u.pctNoContact), pctFmt) +
       '</div>';
     document.getElementById('cmpContactSpeedMetrics').innerHTML = html;
   }
@@ -2062,7 +2081,10 @@ function initDashboard() {
     }
     document.getElementById('cmpQuoteSpeedCard').style.display = '';
     var dayFmt = function (v) { return v == null ? '데이터 부족' : v.toFixed(1) + '일'; };
-    document.getElementById('cmpQuoteSpeedMetrics').innerHTML = cmp2MetricHtml('문의 → 첫 견적 중앙 소요일', c.medQuoteDays, u.medQuoteDays, dayFmt);
+    document.getElementById('cmpQuoteSpeedMetrics').innerHTML = cmp2MetricHtml('문의 → 첫 견적 중앙 소요일', [
+      { tag: '계약', val: c.medQuoteDays, cls: 'good' },
+      { tag: '미전환', val: u.medQuoteDays, cls: 'bad' }
+    ], dayFmt);
   }
 
   function renderCmpContactRateTable(periodRows) {
