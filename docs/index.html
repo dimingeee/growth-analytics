@@ -182,9 +182,9 @@
   }
   .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-items: start; }
   .compare-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
-  .compare-head { font-weight: 700; font-size: 14.5px; padding: 9px 14px; border-radius: 8px; }
-  .compare-head.good { background: var(--accent-tint); color: var(--accent-ink); }
-  .compare-head.bad { background: color-mix(in srgb, var(--brick) 14%, var(--surface)); color: var(--brick); }
+  .compare-head { font-weight: 700; font-size: 14.5px; padding: 6px 0 6px 12px; border-left: 4px solid; }
+  .compare-head.good { border-color: var(--accent); color: var(--accent-ink); }
+  .compare-head.bad { border-color: var(--brick); color: var(--brick); }
   @media (max-width: 900px) {
     .compare-grid { grid-template-columns: 1fr; }
   }
@@ -267,6 +267,17 @@
   tr.flag td { color: var(--ink-2); }
   .rate-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 12.5px; background: var(--surface-2); color: var(--ink-2); }
   .table-scroll { overflow-x: auto; }
+
+  /* 비교 표: 전환율을 셀 안 미니 막대로 즉시 스캔 가능하게 */
+  .rate-cell { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+  .rate-cell-track { position: relative; width: 84px; height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; flex: none; }
+  .rate-cell-fill { position: absolute; top: 0; left: 0; height: 100%; border-radius: 4px; background: var(--accent); min-width: 2px; }
+  .rate-cell-value { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 12.5px; color: var(--ink); width: 44px; text-align: right; flex: none; }
+  tr.rate-best td { background: var(--accent-tint); }
+  tr.rate-best .rate-cell-fill { background: var(--accent-ink); }
+  tr.rate-worst td { background: color-mix(in srgb, var(--brick) 7%, var(--surface)); }
+  tr.rate-worst .rate-cell-fill { background: var(--brick); }
+  tr.rate-best td:first-child, tr.rate-worst td:first-child { font-weight: 700; }
   .status-drill-pager { display: flex; align-items: center; justify-content: center; margin-top: 14px; }
   .drill-th:hover { color: var(--accent-ink); }
 
@@ -730,14 +741,23 @@
       <div class="table-scroll"><table id="cmpContactRateTable"></table></div>
     </section>
 
-    <section class="card">
-      <div class="card-head"><div><div class="card-title">유입 채널 비교</div></div></div>
-      <div class="table-scroll"><table id="cmpChannelTable"></table></div>
+    <section class="card" id="cmpQuoteSpeedCard">
+      <div class="card-head"><div><div class="card-title">견적 속도 비교</div><div class="card-title-sub">문의 → 첫 견적 평균 소요시간(일)</div></div></div>
+      <div id="cmpQuoteSpeedMetrics"></div>
     </section>
 
     <section class="card">
-      <div class="card-head"><div><div class="card-title">IP 유형 비교</div></div></div>
-      <div class="table-scroll"><table id="cmpIpTable"></table></div>
+      <div class="card-head"><div><div class="card-title">유입 채널 · IP 유형 비교</div></div></div>
+      <div class="charts-2col">
+        <div>
+          <div class="card-title-sub" style="margin-bottom:8px;">유입 채널</div>
+          <div class="table-scroll"><table id="cmpChannelTable"></table></div>
+        </div>
+        <div>
+          <div class="card-title-sub" style="margin-bottom:8px;">IP 유형</div>
+          <div class="table-scroll"><table id="cmpIpTable"></table></div>
+        </div>
+      </div>
     </section>
 
     <section class="card">
@@ -754,10 +774,7 @@
       </div>
     </section>
 
-    <section class="card" id="cmpQuoteSpeedCard">
-      <div class="card-head"><div><div class="card-title">견적 속도 비교</div><div class="card-title-sub">문의 → 첫 견적 평균 소요시간(일)</div></div></div>
-      <div id="cmpQuoteSpeedMetrics"></div>
-    </section>
+    <div class="section-divider">계약 vs 미전환 상세 <span class="badge-fixed">소요일수 분포</span></div>
 
     <div class="compare-grid">
       <div class="compare-col">
@@ -767,10 +784,6 @@
           <div class="card-head"><div><div class="card-title">소요일수 분포</div><div class="card-title-sub" id="cmpLeftChartSub"></div></div></div>
           <div id="cmpLeftChart"></div>
         </div>
-        <div class="card">
-          <div class="card-head"><div><div class="card-title">데이터</div></div></div>
-          <div class="table-scroll"><table id="cmpLeftTable"></table></div>
-        </div>
       </div>
       <div class="compare-col">
         <div class="compare-head bad" id="cmpRightLabel">수임 안됨 (미전환)</div>
@@ -779,21 +792,14 @@
           <div class="card-head"><div><div class="card-title">소요일수 분포</div><div class="card-title-sub" id="cmpRightChartSub"></div></div></div>
           <div id="cmpRightChart"></div>
         </div>
-        <div class="card">
-          <div class="card-head"><div><div class="card-title">미전환 사유</div><div class="card-title-sub" id="cmpReasonSub"></div></div></div>
-          <div id="cmpReasonChart"></div>
-          <div class="status-insights" id="cmpReasonInsight"></div>
-        </div>
-        <div class="card">
-          <div class="card-head"><div><div class="card-title">미전환 개선 가능성</div><div class="card-title-sub">사유값 기준 추정 분류</div></div></div>
-          <div class="kpi-grid kpi-grid-sm" id="cmpImprovableKpi"></div>
-        </div>
-        <div class="card">
-          <div class="card-head"><div><div class="card-title">데이터</div></div></div>
-          <div class="table-scroll"><table id="cmpRightTable"></table></div>
-        </div>
       </div>
     </div>
+
+    <section class="card">
+      <div class="card-head"><div><div class="card-title">미전환 사유</div><div class="card-title-sub" id="cmpReasonSub"></div></div></div>
+      <div id="cmpReasonChart"></div>
+      <div class="status-insights" id="cmpReasonInsight"></div>
+    </section>
   </div>
   </div>
 
@@ -1320,8 +1326,6 @@ function initDashboard() {
     delayed_response: '연락 지연', no_response: '고객 무응답', cost: '가격', other: '기타',
     trademark: '상표', design: '디자인'
   };
-  var IMPROVABLE_REASONS = ['delayed_response', 'cost'];
-  var UNCONTROLLABLE_REASONS = ['no_response', 'trademark', 'design'];
   var CONTACT_SPEED_BUCKETS = [
     { key: 'h1', label: '1시간 이내', max: 1 }, { key: 'h3', label: '1~3시간', max: 3 },
     { key: 'h6', label: '3~6시간', max: 6 }, { key: 'h12', label: '6~12시간', max: 12 },
@@ -1903,13 +1907,10 @@ function initDashboard() {
     var kpiHtml = '';
     kpiHtml += '<div class="kpi"><div class="kpi-label">' + endM.label + ' 도달률</div><div class="kpi-value font-mono">' + f.rate.toFixed(1) + '%</div><div class="kpi-sub">' + f.reached.toLocaleString() + ' / ' + f.total.toLocaleString() + '건</div></div>';
     kpiHtml += '<div class="kpi"><div class="kpi-label">평균 소요일수</div><div class="kpi-value font-mono">' + (f.avg != null ? f.avg.toFixed(1) + '일' : '—') + '</div><div class="kpi-sub">도달한 건 기준</div></div>';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">중앙값 소요일수</div><div class="kpi-value font-mono">' + (f.median != null ? f.median.toFixed(1) + '일' : '—') + '</div><div class="kpi-sub">이상치 영향 적음</div></div>';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">분석 대상</div><div class="kpi-value font-mono">' + f.total.toLocaleString() + '건</div><div class="kpi-sub">' + startM.label + ' 도달 기준</div></div>';
     document.getElementById(prefix + 'Kpi').innerHTML = kpiHtml;
 
     if (f.total === 0) {
       document.getElementById(prefix + 'Chart').innerHTML = '<div class="empty-state">해당 기간에 데이터가 없습니다.</div>';
-      document.getElementById(prefix + 'Table').innerHTML = '';
       document.getElementById(prefix + 'ChartSub').textContent = '';
       return;
     }
@@ -1925,15 +1926,6 @@ function initDashboard() {
     var bestIdx = 0, bestVal = -1;
     for (var i = 0; i < 5; i++) if (values[i] > bestVal) { bestVal = values[i]; bestIdx = i; }
     renderBarChart(document.getElementById(prefix + 'Chart'), { values: values, labels: labels, valueLabels: valueLabels, tooltips: tooltips, unit: '%', bestIdx: bestIdx, mutedIdx: [5] });
-
-    var thead = '<thead><tr><th>구간</th><th>건수</th><th>비율</th></tr></thead>';
-    var tbody = '<tbody>';
-    BUCKETS.forEach(function (b) {
-      tbody += '<tr><td>' + b.label + '</td><td class="num font-mono">' + f.counts[b.key].toLocaleString() + '</td><td><span class="rate-pill font-mono">' + (f.total ? (f.counts[b.key] / f.total * 100).toFixed(1) : '0') + '%</span></td></tr>';
-    });
-    tbody += '<tr class="flag"><td>미도달</td><td class="num font-mono">' + f.counts.none.toLocaleString() + '</td><td><span class="rate-pill font-mono">' + (f.total ? (f.counts.none / f.total * 100).toFixed(1) : '0') + '%</span></td></tr>';
-    tbody += '</tbody>';
-    document.getElementById(prefix + 'Table').innerHTML = thead + tbody;
   }
 
   function renderCompare() {
@@ -1984,18 +1976,16 @@ function initDashboard() {
       var topRows = unqualified.filter(function (r) { return (r[REQ_IDX.unqualifiedReason] || '') === topKey; });
       var topHours = topRows.map(function (r) { var i = parseISO(r[REQ_IDX.inquiry]), c = parseISO(r[REQ_IDX.contact]); return (i && c && c.getTime() >= i.getTime()) ? (c.getTime() - i.getTime()) / 3600000 : null; }).filter(function (v) { return v != null; });
       var allUnqualHours = unqualified.map(function (r) { var i = parseISO(r[REQ_IDX.inquiry]), c = parseISO(r[REQ_IDX.contact]); return (i && c && c.getTime() >= i.getTime()) ? (c.getTime() - i.getTime()) / 3600000 : null; }).filter(function (v) { return v != null; });
-      var topMed = medianOf(topHours), allMed = medianOf(allUnqualHours);
+      var topAvg = avgOf(topHours), allAvg = avgOf(allUnqualHours);
       var reasonInsight = '<div class="status-insight-line">미전환 사유 중 <b>\'' + (REASON_LABELS[topKey] || topKey) + '\'</b>이 ' + reasonCounts[topKey].toLocaleString() + '건(' + (reasonCounts[topKey] / reasonTotal * 100).toFixed(0) + '%)으로 가장 많습니다.</div>';
-      if (topMed != null && allMed != null) {
-        reasonInsight += '<div class="status-insight-line">이 그룹의 첫 연락 중앙시간은 <b>' + fmtHours(topMed) + '</b>' + (topMed > allMed ? ' — 미전환 전체 평균(' + fmtHours(allMed) + ')보다 늦습니다.' : '입니다.') + '</div>';
+      if (topAvg != null && allAvg != null) {
+        reasonInsight += '<div class="status-insight-line">이 그룹의 첫 연락 평균시간은 <b>' + fmtHours(topAvg) + '</b>' + (topAvg > allAvg ? ' — 미전환 전체 평균(' + fmtHours(allAvg) + ')보다 늦습니다.' : '입니다.') + '</div>';
       }
       document.getElementById('cmpReasonInsight').innerHTML = reasonInsight;
     } else {
       document.getElementById('cmpReasonChart').innerHTML = '<div class="empty-state">해당 기간에 미전환 건이 없습니다.</div>';
       document.getElementById('cmpReasonInsight').innerHTML = '';
     }
-    renderCmpImprovable(unqualified, reasonCounts, reasonTotal);
-
     renderCmpContactSpeed(converted, unqualified);
     renderCmpContactRateTable(periodRows);
     renderCmp2DistTable('cmpChannelTable', converted, unqualified, function (r) { return r[REQ_IDX.channel] || '(미기록)'; }, CHANNEL_LABELS_CMP);
@@ -2109,50 +2099,51 @@ function initDashboard() {
       });
       return g;
     }
-    var thead = '<thead><tr><th>첫 연락 시간</th><th>전체 문의</th><th>계약</th><th>미전환</th><th>진행 중</th><th>계약전환율</th></tr></thead>';
-    var tbody = '<tbody>';
-    CONTACT_SPEED_BUCKETS.forEach(function (b) {
-      var g = groupOf(b.key);
-      var rate = (g.contracted + g.unqualified) ? g.contracted / (g.contracted + g.unqualified) * 100 : 0;
-      tbody += '<tr><td>' + b.label + '</td><td class="num font-mono">' + g.total.toLocaleString() + '</td><td class="num font-mono">' + g.contracted.toLocaleString() + '</td><td class="num font-mono">' + g.unqualified.toLocaleString() + '</td><td class="num font-mono">' + g.inProgress.toLocaleString() + '</td><td><span class="rate-pill font-mono">' + rate.toFixed(1) + '%</span></td></tr>';
-    });
+    var groups = CONTACT_SPEED_BUCKETS.map(function (b) { return { label: b.label, g: groupOf(b.key) }; });
     var gNo = groupOf('nocontact');
-    var rateNo = (gNo.contracted + gNo.unqualified) ? gNo.contracted / (gNo.contracted + gNo.unqualified) * 100 : 0;
-    tbody += '<tr class="flag"><td>연락 기록 없음</td><td class="num font-mono">' + gNo.total.toLocaleString() + '</td><td class="num font-mono">' + gNo.contracted.toLocaleString() + '</td><td class="num font-mono">' + gNo.unqualified.toLocaleString() + '</td><td class="num font-mono">' + gNo.inProgress.toLocaleString() + '</td><td><span class="rate-pill font-mono">' + rateNo.toFixed(1) + '%</span></td></tr>';
-    tbody += '</tbody>';
+    groups.push({ label: '연락 기록 없음', g: gNo, flag: true });
+    var rates = groups.map(function (row) { return (row.g.contracted + row.g.unqualified) ? row.g.contracted / (row.g.contracted + row.g.unqualified) * 100 : 0; });
+    var maxRate = Math.max.apply(null, rates.concat([1]));
+
+    var thead = '<thead><tr><th>첫 연락 시간</th><th>전체 문의</th><th>계약</th><th>미전환</th><th>진행 중</th><th>계약전환율</th></tr></thead>';
+    var tbody = '<tbody>' + groups.map(function (row, i) {
+      var g = row.g;
+      return '<tr' + (row.flag ? ' class="flag"' : '') + '><td>' + row.label + '</td><td class="num font-mono">' + g.total.toLocaleString() + '</td><td class="num font-mono">' + g.contracted.toLocaleString() + '</td><td class="num font-mono">' + g.unqualified.toLocaleString() + '</td><td class="num font-mono">' + g.inProgress.toLocaleString() + '</td><td>' + rateCellHtml(rates[i], maxRate) + '</td></tr>';
+    }).join('') + '</tbody>';
     document.getElementById('cmpContactRateTable').innerHTML = thead + tbody;
   }
 
+  function rateCellHtml(rate, maxRate) {
+    var w = maxRate > 0 ? Math.max(rate / maxRate * 100, rate > 0 ? 2 : 0) : 0;
+    return '<div class="rate-cell"><div class="rate-cell-track"><div class="rate-cell-fill" style="width:' + w.toFixed(1) + '%"></div></div><span class="rate-cell-value font-mono">' + rate.toFixed(1) + '%</span></div>';
+  }
+
+  // 계약/미전환 비중(전체 대비 %) 컬럼은 빼고, 각 구분의 "전환율"에 미니 막대를 붙여서
+  // 표를 훑기만 해도 어디가 잘 되고 어디가 안 되는지 바로 보이게 한다. 표본이 너무 적은 행은
+  // (n<5) best/worst 강조에서 제외해 우연히 100%/0%인 행이 눈에 띄지 않게 막는다.
   function renderCmp2DistTable(elId, convertedRows, unqualifiedRows, getter, labelMap) {
     var cCounts = {}, uCounts = {}, keySet = {};
     convertedRows.forEach(function (r) { var k = getter(r); keySet[k] = true; cCounts[k] = (cCounts[k] || 0) + 1; });
     unqualifiedRows.forEach(function (r) { var k = getter(r); keySet[k] = true; uCounts[k] = (uCounts[k] || 0) + 1; });
     var keys = Object.keys(keySet).sort(function (a, b) { return ((cCounts[b] || 0) + (uCounts[b] || 0)) - ((cCounts[a] || 0) + (uCounts[a] || 0)); });
-    var cTotal = convertedRows.length, uTotal = unqualifiedRows.length;
-    var thead = '<thead><tr><th>구분</th><th>계약 비중</th><th>미전환 비중</th><th>계약</th><th>미전환</th><th>전환율</th></tr></thead>';
-    var tbody = '<tbody>';
     if (!keys.length) { document.getElementById(elId).innerHTML = '<div class="empty-state">데이터가 없습니다.</div>'; return; }
-    keys.forEach(function (k) {
-      var cN = cCounts[k] || 0, uN = uCounts[k] || 0;
-      var cPct = cTotal ? cN / cTotal * 100 : 0, uPct = uTotal ? uN / uTotal * 100 : 0;
-      var rate = (cN + uN) ? cN / (cN + uN) * 100 : 0;
-      var label = (labelMap && labelMap[k]) || k;
-      tbody += '<tr><td>' + escapeHtml(label) + '</td><td class="num font-mono">' + cPct.toFixed(1) + '%</td><td class="num font-mono">' + uPct.toFixed(1) + '%</td><td class="num font-mono">' + cN.toLocaleString() + '</td><td class="num font-mono">' + uN.toLocaleString() + '</td><td><span class="rate-pill font-mono">' + rate.toFixed(1) + '%</span></td></tr>';
-    });
-    tbody += '</tbody>';
-    document.getElementById(elId).innerHTML = thead + tbody;
-  }
 
-  function renderCmpImprovable(unqualified, reasonCounts, reasonTotal) {
-    var improvable = unqualified.filter(function (r) { return IMPROVABLE_REASONS.indexOf(r[REQ_IDX.unqualifiedReason]) !== -1; }).length;
-    var uncontrollable = unqualified.filter(function (r) { return UNCONTROLLABLE_REASONS.indexOf(r[REQ_IDX.unqualifiedReason]) !== -1; }).length;
-    var unrecorded = reasonCounts[''] || 0;
-    var kpiHtml = '';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">미전환</div><div class="kpi-value font-mono">' + reasonTotal.toLocaleString() + '건</div></div>';
-    kpiHtml += '<div class="kpi highlight" title="연락 지연 · 가격"><div class="kpi-label">개선 가능</div><div class="kpi-value font-mono">' + improvable.toLocaleString() + '건</div><div class="kpi-sub">' + (reasonTotal ? (improvable / reasonTotal * 100).toFixed(0) : '0') + '%</div></div>';
-    kpiHtml += '<div class="kpi" title="고객 무응답 · 상표/디자인(취급 범위 밖)"><div class="kpi-label">통제 어려움</div><div class="kpi-value font-mono">' + uncontrollable.toLocaleString() + '건</div><div class="kpi-sub">' + (reasonTotal ? (uncontrollable / reasonTotal * 100).toFixed(0) : '0') + '%</div></div>';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">사유 미기록</div><div class="kpi-value font-mono">' + unrecorded.toLocaleString() + '건</div><div class="kpi-sub">' + (reasonTotal ? (unrecorded / reasonTotal * 100).toFixed(0) : '0') + '%</div></div>';
-    document.getElementById('cmpImprovableKpi').innerHTML = kpiHtml;
+    var rows = keys.map(function (k) {
+      var cN = cCounts[k] || 0, uN = uCounts[k] || 0;
+      var n = cN + uN;
+      return { label: (labelMap && labelMap[k]) || k, cN: cN, uN: uN, n: n, rate: n ? cN / n * 100 : 0 };
+    });
+    var maxRate = Math.max.apply(null, rows.map(function (r) { return r.rate; }).concat([1]));
+    var eligible = rows.filter(function (r) { return r.n >= 5; });
+    var bestKey = eligible.length ? eligible.reduce(function (a, b) { return b.rate > a.rate ? b : a; }).label : null;
+    var worstKey = eligible.length ? eligible.reduce(function (a, b) { return b.rate < a.rate ? b : a; }).label : null;
+
+    var thead = '<thead><tr><th>구분</th><th>계약</th><th>미전환</th><th>전환율</th></tr></thead>';
+    var tbody = '<tbody>' + rows.map(function (r) {
+      var cls = r.label === bestKey && bestKey !== worstKey ? ' class="rate-best"' : (r.label === worstKey && bestKey !== worstKey ? ' class="rate-worst"' : '');
+      return '<tr' + cls + '><td>' + escapeHtml(r.label) + '</td><td class="num font-mono">' + r.cN.toLocaleString() + '</td><td class="num font-mono">' + r.uN.toLocaleString() + '</td><td>' + rateCellHtml(r.rate, maxRate) + '</td></tr>';
+    }).join('') + '</tbody>';
+    document.getElementById(elId).innerHTML = thead + tbody;
   }
 
   function renderCmpTopDiff(converted, unqualified) {
