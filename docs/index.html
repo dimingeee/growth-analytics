@@ -338,6 +338,11 @@
   .mini-rate-sub { font-size: 12px; color: var(--ink-3); margin-top: 2px; font-variant-numeric: tabular-nums; }
   .status-block-title { font-size: 14.5px; font-weight: 700; color: var(--ink); margin-bottom: 14px; }
   .status-arrow { text-align: center; color: var(--ink-3); font-size: 15px; line-height: 1; margin: -2px 0; }
+  .stall-details summary.status-block-title { cursor: pointer; margin-bottom: 0; list-style: none; }
+  .stall-details summary.status-block-title::-webkit-details-marker { display: none; }
+  .stall-details summary.status-block-title::before { content: '▸ '; color: var(--ink-3); }
+  .stall-details[open] summary.status-block-title::before { content: '▾ '; }
+  .stall-details[open] summary.status-block-title { margin-bottom: 14px; }
 
   .status-outcome-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
   .status-outcome-item {
@@ -609,10 +614,14 @@
     <button class="btn-download" id="downloadBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M5 21h14"/></svg>데이터 다운로드</button>
   </div>
   <div id="viewSingle">
+    <div class="dash-hero" id="statsHero" style="display:none;">
+      <h2 class="font-head">통계</h2>
+      <p class="subtitle">전체 데이터에서 어떤 패턴과 추이가 있는가</p>
+    </div>
     <div id="statsMainCards">
     <div class="section-divider">추이 · 소요일 <span class="badge-reactive">선택 기간 반응</span></div>
 
-    <section class="kpi-grid" id="kpiGrid"></section>
+    <section class="kpi-grid kpi-grid-sm" id="kpiGrid"></section>
 
     <section class="card">
       <div class="card-head">
@@ -666,9 +675,11 @@
       </div>
       <div class="status-arrow" aria-hidden="true">↓</div>
       <div class="status-block">
-        <div class="status-block-title">현재 단계의 장기 진행 건</div>
-        <div id="statusStallGrid" class="status-stall-grid"></div>
-        <div class="status-stall-note">단계 진입 시각 기록이 없어 <b>문의 접수일 기준 경과일</b>로 근사한 값입니다(실제 이 단계 체류기간이 아닙니다). 기준선(3·7·14·30일)은 필요 시 코드에서 조정할 수 있습니다.</div>
+        <details class="stall-details">
+          <summary class="status-block-title">현재 단계의 장기 진행 건 · 단계별 3·7·14·30일 경과 상세</summary>
+          <div id="statusStallGrid" class="status-stall-grid"></div>
+          <div class="status-stall-note">단계 진입 시각 기록이 없어 <b>문의 접수일 기준 경과일</b>로 근사한 값입니다(실제 이 단계 체류기간이 아닙니다). 기준선(3·7·14·30일)은 필요 시 코드에서 조정할 수 있습니다.</div>
+        </details>
       </div>
       <div class="status-insights" id="statusInsights"></div>
     </section>
@@ -1228,10 +1239,8 @@ function initDashboard() {
     var f = computeFunnel(rows, startM.get, endM.get);
 
     var kpiHtml = '';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">분석 대상 (' + startM.label + ' 도달)</div><div class="kpi-value font-mono">' + f.total.toLocaleString() + '건</div><div class="kpi-sub">' + fmtDate(rangeStart) + ' ~ ' + fmtDate(rangeEnd) + '</div></div>';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">' + endM.label + ' 도달률</div><div class="kpi-value font-mono">' + f.rate.toFixed(1) + '%</div><div class="kpi-sub">' + f.reached.toLocaleString() + '건 도달 / ' + f.total.toLocaleString() + '건 중</div></div>';
+    kpiHtml += '<div class="kpi"><div class="kpi-label">' + endM.label + ' 도달률</div><div class="kpi-value font-mono">' + f.rate.toFixed(1) + '%</div><div class="kpi-sub">' + f.reached.toLocaleString() + '건 도달 / ' + f.total.toLocaleString() + '건 중 (' + fmtDate(rangeStart) + ' ~ ' + fmtDate(rangeEnd) + ')</div></div>';
     kpiHtml += '<div class="kpi"><div class="kpi-label">평균 소요일수</div><div class="kpi-value font-mono">' + (f.avg != null ? f.avg.toFixed(1) + '일' : '—') + '</div><div class="kpi-sub">도달한 건 기준</div></div>';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">중앙값 소요일수</div><div class="kpi-value font-mono">' + (f.median != null ? f.median.toFixed(1) + '일' : '—') + '</div><div class="kpi-sub">이상치 영향 적은 지표</div></div>';
     document.getElementById('kpiGrid').innerHTML = kpiHtml;
 
     document.getElementById('mainChartTitle').textContent = startM.label + ' → ' + endM.label + ' 소요일수 분포';
@@ -1709,12 +1718,20 @@ function initDashboard() {
     order.sort(function (a, b) { return counts[b] - counts[a]; });
     subEl.textContent = periodNote;
     if (!order.length) { tableEl.innerHTML = '<tbody><tr><td class="empty-state" colspan="4">데이터가 없습니다.</td></tr></tbody>'; return; }
+
+    var entries = order.map(function (k) {
+      return { label: (labelMap && labelMap[k]) || k || '(미기록)', n: counts[k], c: contracted[k], rate: counts[k] ? contracted[k] / counts[k] * 100 : 0 };
+    });
+    var maxRate = Math.max.apply(null, entries.map(function (e) { return e.rate; }).concat([1]));
+    var eligible = entries.filter(function (e) { return e.n >= 5; });
+    var bestLabel = eligible.length ? eligible.reduce(function (a, b) { return b.rate > a.rate ? b : a; }).label : null;
+    var worstLabel = eligible.length ? eligible.reduce(function (a, b) { return b.rate < a.rate ? b : a; }).label : null;
+
     var thead = '<thead><tr><th>구분</th><th>문의</th><th>계약</th><th>전환율</th></tr></thead>';
-    var tbody = '<tbody>' + order.map(function (k) {
-      var label = (labelMap && labelMap[k]) || k || '(미기록)';
-      var rate = counts[k] ? contracted[k] / counts[k] * 100 : 0;
-      return '<tr><td>' + escapeHtml(label) + '</td><td class="num font-mono">' + counts[k].toLocaleString() + '</td>' +
-        '<td class="num font-mono">' + contracted[k].toLocaleString() + '</td><td><span class="rate-pill font-mono">' + rate.toFixed(1) + '%</span></td></tr>';
+    var tbody = '<tbody>' + entries.map(function (e) {
+      var cls = e.label === bestLabel && bestLabel !== worstLabel ? ' class="rate-best"' : (e.label === worstLabel && bestLabel !== worstLabel ? ' class="rate-worst"' : '');
+      return '<tr' + cls + '><td>' + escapeHtml(e.label) + '</td><td class="num font-mono">' + e.n.toLocaleString() + '</td>' +
+        '<td class="num font-mono">' + e.c.toLocaleString() + '</td><td>' + rateCellHtml(e.rate, maxRate) + '</td></tr>';
     }).join('') + '</tbody>';
     tableEl.innerHTML = thead + tbody;
   }
@@ -2409,6 +2426,7 @@ function initDashboard() {
     if (isDash) { renderDashboard(); return; }
 
     document.getElementById('dataHero').style.display = state.section === 'data' ? '' : 'none';
+    document.getElementById('statsHero').style.display = state.section === 'stats' ? '' : 'none';
     document.getElementById('dataNotesGroup').style.display = state.section === 'data' ? '' : 'none';
 
     if (state.section === 'stats') {
