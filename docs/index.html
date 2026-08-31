@@ -1048,13 +1048,21 @@ function initDashboard() {
     var n = s.length;
     return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
   }
+  // "도달했는가"(reached/rate)와 "소요일수 분포"(counts/avg/median)는 서로 다른 질문이라 분리해야 한다.
+  // 도달 여부는 두 마일스톤 기록이 둘 다 있으면 참 — 어느 쪽이 먼저 입력됐는지는 무관하다.
+  // 반면 소요일수는 시작보다 끝이 빨라야(d>=0) 구간 길이로 의미가 있으므로, 날짜가 뒤바뀐 건(counts.neg)은
+  // "도달은 했지만 소요일수 분포/평균에는 넣을 수 없는 건"으로 취급한다(이전에는 이런 건을 reached에서도
+  // 빼버려서, 예를 들어 견적서를 계약과 거의 동시에 서류로 넣는 업무 관행 때문에 "견적→계약 도달률"이
+  // 실제로는 98%대인데 4%로 잘못 나오는 문제가 있었다).
   function computeFunnel(rows, startGet, endGet) {
     var counts = { b0: 0, b1: 0, b2: 0, b3: 0, b4: 0, none: 0, neg: 0 };
     var days = [];
+    var reachedCount = 0;
     rows.forEach(function (r) {
       var sRaw = startGet(r), eRaw = endGet(r);
       if (!sRaw) return;
       if (!eRaw) { counts.none++; return; }
+      reachedCount++;
       var d = daysBetween(parseISO(sRaw), parseISO(eRaw));
       if (d < 0) { counts.neg++; return; }
       days.push(d);
@@ -1064,7 +1072,7 @@ function initDashboard() {
     days.sort(function (a, b) { return a - b; });
     var avg = days.length ? days.reduce(function (a, b) { return a + b; }, 0) / days.length : null;
     var median = days.length ? (days.length % 2 ? days[(days.length - 1) / 2] : (days[days.length / 2 - 1] + days[days.length / 2]) / 2) : null;
-    return { counts: counts, total: total, reached: days.length, rate: total ? days.length / total * 100 : 0, avg: avg, median: median };
+    return { counts: counts, total: total, reached: reachedCount, rate: total ? reachedCount / total * 100 : 0, avg: avg, median: median };
   }
 
   function renderBarChart(container, opts) {
@@ -1818,23 +1826,25 @@ function initDashboard() {
     var total = rows.length;
     var stepAB = computeFunnel(rows, gInquiry, gContact);
     var stepBC = computeFunnel(rows, gContact, gQuote);
+    var stepCD = computeFunnel(rows, gQuote, gContract);
     function overallCount(getter) { var n = 0; rows.forEach(function (r) { if (getter(r)) n++; }); return n; }
     var nContact = overallCount(gContact), nQuote = overallCount(gQuote), nContract = overallCount(gContract);
-    // "첫 견적 → 계약"은 순차 필터링으로 못 쓴다: 견적·계약 기록이 둘 다 있는 건 중 223/224건이
-    // 오히려 계약일이 견적일보다 같거나 빠르다(psql로 확인) — 견적서가 계약 체결과 거의 동시에
-    // 또는 그 직후 서류 작업으로 입력되기 때문. 그래서 이 구간의 "이전 대비"/"다음까지"는 표시하지 않는다.
+    // "견적 → 계약"의 도달률(reached/rate)은 두 기록이 둘 다 있으면 세므로 정상 집계된다.
+    // 다만 "다음까지"(소요일수)는 여전히 못 쓴다: 견적·계약 기록이 둘 다 있는 건 중 223/224건이
+    // 계약일이 견적일보다 같거나 빠르기 때문(견적서가 계약과 거의 동시에 서류로 입력됨) —
+    // 음수 구간은 소요일수 분포에서 제외되는 게 맞지만, 그 소수 표본(1건)으로 평균을 낼 수는 없다.
     var steps = [
       { label: '문의 접수', count: total, overall: 100, prevRate: null, medNext: stepAB.median },
       { label: '첫 연락', count: nContact, overall: total ? nContact / total * 100 : 0, prevRate: stepAB.rate, medNext: stepBC.median },
       { label: '첫 견적', count: nQuote, overall: total ? nQuote / total * 100 : 0, prevRate: stepBC.rate, medNext: null, medNextUnreliable: true },
-      { label: '계약', count: nContract, overall: total ? nContract / total * 100 : 0, prevRate: null, prevRateUnreliable: true, medNext: null }
+      { label: '계약', count: nContract, overall: total ? nContract / total * 100 : 0, prevRate: stepCD.rate, medNext: null }
     ];
     var worstIdx = 1, worstRate = 101;
     for (var i = 1; i < steps.length; i++) if (steps[i].prevRate != null && steps[i].prevRate < worstRate) { worstRate = steps[i].prevRate; worstIdx = i; }
 
     var headHtml = '<div class="funnel-head"><span>단계</span><span></span><span>건수</span><span>이전 대비</span><span>다음까지</span></div>';
     var rowsHtml = steps.map(function (st, i) {
-      var rateCell = st.prevRate != null ? st.prevRate.toFixed(1) + '%' : (st.prevRateUnreliable ? '<span title="견적·계약 기록 순서가 대부분 뒤바뀌어 있어 신뢰할 수 없습니다">—*</span>' : '—');
+      var rateCell = st.prevRate != null ? st.prevRate.toFixed(1) + '%' : '—';
       var daysCell = st.medNext != null ? st.medNext.toFixed(1) + '일' : (st.medNextUnreliable ? '<span title="견적·계약 기록 순서가 대부분 뒤바뀌어 있어 신뢰할 수 없습니다">—*</span>' : '—');
       return '<div class="funnel-step">' +
         '<div class="funnel-step-name">' + st.label + '</div>' +
@@ -1845,7 +1855,7 @@ function initDashboard() {
         '</div>';
     }).join('');
     var insight = total ? '<div class="status-insight-line">가장 이탈이 큰 구간은 <b>\'' + steps[worstIdx - 1].label + ' → ' + steps[worstIdx].label + '\'</b>입니다 (이전 단계 대비 ' + worstRate.toFixed(1) + '%만 도달).</div>' : '';
-    var note = '<div class="status-insight-line">각 단계 건수는 해당 기록 보유 여부를 독립적으로 집계한 것으로, 이전 단계를 반드시 거쳐야 하는 순차 필터링이 아닙니다. 계약 상당수가 정식 견적 기록 없이(또는 견적서가 계약과 거의 동시에 서류상으로만) 진행되어 <b>계약(' + nContract.toLocaleString() + '건)이 첫 견적(' + nQuote.toLocaleString() + '건)보다 많을 수 있습니다</b> — 그래서 이 구간의 이전 대비/다음까지는 —*(신뢰 불가)로 표시됩니다.</div>';
+    var note = '<div class="status-insight-line">각 단계 건수는 해당 기록 보유 여부를 독립적으로 집계한 것으로, 이전 단계를 반드시 거쳐야 하는 순차 필터링이 아닙니다. 계약 상당수가 정식 견적 기록 없이 진행되어 <b>계약(' + nContract.toLocaleString() + '건)이 첫 견적(' + nQuote.toLocaleString() + '건)보다 많을 수 있습니다</b>. "첫 견적 → 계약"의 다음까지(소요일)만 —*(신뢰 불가)입니다 — 견적서가 계약과 거의 동시에 서류로 입력돼 실제 소요일을 잴 수 없기 때문입니다.</div>';
     document.getElementById('funnelSteps').innerHTML = headHtml + rowsHtml + insight + note;
   }
 
