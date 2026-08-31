@@ -311,12 +311,11 @@
   .mini-sub { font-size: 12.5px; color: var(--ink-3); margin-top: 4px; }
   .mini-note { font-size: 12.5px; color: var(--ink-3); margin: -4px 0 0; max-width: 90ch; }
 
-  .spark-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  @media (max-width: 700px) { .spark-row { grid-template-columns: 1fr; } }
-  .spark-widget-label { font-size: 12.5px; font-weight: 700; color: var(--ink-2); margin-bottom: 6px; }
-  .spark-widget-chart { height: 36px; }
-  .spark-widget-nums { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-  .spark-widget-nums span:last-child { color: var(--ink); font-weight: 700; }
+  .mini-rate-block { padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .mini-rate-block:last-of-type { border-bottom: none; }
+  .mini-rate-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 13.5px; color: var(--ink-2); }
+  .mini-rate-row b { font-variant-numeric: tabular-nums; color: var(--ink); font-size: 14.5px; }
+  .mini-rate-sub { font-size: 12px; color: var(--ink-3); margin-top: 2px; font-variant-numeric: tabular-nums; }
   .status-block-title { font-size: 14.5px; font-weight: 700; color: var(--ink); margin-bottom: 14px; }
   .status-arrow { text-align: center; color: var(--ink-3); font-size: 15px; line-height: 1; margin: -2px 0; }
 
@@ -546,11 +545,6 @@
 
     <section class="kpi-grid kpi-grid-dash" id="dashKpiGrid"></section>
 
-    <section class="card">
-      <div class="card-title" style="margin-bottom:14px;">최근 3개월 추이</div>
-      <div id="trendSparkRow" class="spark-row"></div>
-    </section>
-
     <div class="section-divider">현재 Pipeline <span class="status-period-label">· 현재 시점 전체</span></div>
 
     <section class="card">
@@ -558,13 +552,20 @@
       <div id="pipelineMiniBars"></div>
     </section>
 
+    <div class="section-divider">최근 3개월 핵심 지표 <span class="status-period-label">· <span id="last3moPeriodLabel"></span></span></div>
+
+    <section class="card">
+      <div class="card-title" style="margin-bottom:14px;">월별 문의 · 계약 · 전환율</div>
+      <div id="trendTableWrap"></div>
+    </section>
+
     <section class="dash-mini-grid">
       <div class="card">
-        <div class="card-title">첫 연락 속도</div>
+        <div class="card-title">첫 연락 속도에 따른 계약률</div>
         <div id="contactSpeedMini"></div>
       </div>
       <div class="card">
-        <div class="card-title">문의 → 계약</div>
+        <div class="card-title">문의 → 계약 중앙 소요일</div>
         <div id="timeToContractMini"></div>
       </div>
       <div class="card">
@@ -984,9 +985,9 @@ function initDashboard() {
     var now = new Date();
     if (state.preset === 'all') return full;
     if (state.preset === 'year') return [new Date(Date.UTC(now.getUTCFullYear(), 0, 1)), now];
-    if (state.preset === '12m') return [monthStart(addMonthsUTC(now, -11)), now];
-    if (state.preset === '6m') return [monthStart(addMonthsUTC(now, -5)), now];
-    if (state.preset === '3m') return [monthStart(addMonthsUTC(now, -2)), now];
+    if (state.preset === '12m') return [monthsAgoStart(now, 11), now];
+    if (state.preset === '6m') return [monthsAgoStart(now, 5), now];
+    if (state.preset === '3m') return [monthsAgoStart(now, 2), now];
     if (state.preset === '1m') return [monthStart(now), now];
     if (state.preset === 'custom') {
       var cs = state.customStart ? new Date(state.customStart) : full[0];
@@ -1301,6 +1302,10 @@ function initDashboard() {
 
   function monthStart(d) { return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)); }
   function addMonthsUTC(d, n) { return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, d.getUTCDate())); }
+  // d.getUTCDate()를 보존하는 addMonthsUTC는 말일(29~31일)에 monthStart와 합쳐 쓰면
+  // 대상 월에 그 날짜가 없을 때(예: 6월 31일) 다음 달로 넘어가는 롤오버가 생겨 같은 달이 중복된다.
+  // "n개월 전 1일"이 필요한 곳은 항상 이 함수로 day-of-month 개입을 원천 차단한다.
+  function monthsAgoStart(d, n) { return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - n, 1)); }
 
   function deltaHtml(delta) {
     if (delta == null) return '<div class="kpi-sub">전월 데이터 없음</div>';
@@ -1409,13 +1414,13 @@ function initDashboard() {
   }
 
   function statusRows(rows) {
-    var thead = '<thead><tr><th>ID</th><th>카테고리</th><th>채널</th><th>문의일</th><th>phase</th><th>stage</th><th>경과일</th><th>미전환 사유</th></tr></thead>';
+    var thead = '<thead><tr><th>카테고리</th><th>채널</th><th>문의일</th><th>PHASE</th><th>STAGE</th><th>경과일</th><th>미전환 사유</th></tr></thead>';
     var now = new Date();
     var tbody = '<tbody>';
     rows.slice(0, 300).forEach(function (r) {
       var d = daysSince(r[REQ_IDX.inquiry], now);
       var reason = r[REQ_IDX.phase] === 'unqualified' ? (r[REQ_IDX.unqualifiedReason] ? escapeHtml(UNQUAL_REASON_LABELS[r[REQ_IDX.unqualifiedReason]] || r[REQ_IDX.unqualifiedReason]) : '<span style="color:var(--ink-3);">사유 미기록</span>') : '—';
-      tbody += '<tr><td>' + escapeHtml(r[REQ_IDX.id]) + '</td><td>' + escapeHtml(r[REQ_IDX.category] || '—') + '</td>' +
+      tbody += '<tr><td>' + escapeHtml(r[REQ_IDX.category] || '—') + '</td>' +
         '<td>' + escapeHtml(r[REQ_IDX.channel] || '—') + '</td><td>' + (parseISO(r[REQ_IDX.inquiry]) ? fmtDate(parseISO(r[REQ_IDX.inquiry])) : '—') + '</td>' +
         '<td>' + (PHASE_LABELS[r[REQ_IDX.phase]] || r[REQ_IDX.phase] || '—') + '</td>' +
         '<td>' + (STAGE_LABELS_REQ[r[REQ_IDX.stage]] || r[REQ_IDX.stage] || '—') + '</td>' +
@@ -1423,7 +1428,7 @@ function initDashboard() {
         '<td>' + reason + '</td></tr>';
     });
     tbody += '</tbody>';
-    if (rows.length > 300) tbody += '<tfoot><tr><td colspan="8" style="color:var(--ink-3); text-align:center;">외 ' + (rows.length - 300).toLocaleString() + '건 더 있음 — 데이터 다운로드로 전체 확인</td></tr></tfoot>';
+    if (rows.length > 300) tbody += '<tfoot><tr><td colspan="7" style="color:var(--ink-3); text-align:center;">외 ' + (rows.length - 300).toLocaleString() + '건 더 있음 — 데이터 다운로드로 전체 확인</td></tr></tfoot>';
     return thead + tbody;
   }
 
@@ -1471,47 +1476,43 @@ function initDashboard() {
     kpiHtml += '<div class="kpi"><div class="kpi-label">' + icoFolder + '진행 중</div><div class="kpi-value font-mono">' + s.inProgress.length.toLocaleString() + '건</div>' + cmpLine(s.inProgress.length, ps.inProgress.length, { unit: '건' }) + '</div>';
     kpiHtml += '<div class="kpi highlight" title="이번 달 접수된 Request 중 계약 비율"><div class="kpi-label">' + icoRate + '전환율</div><div class="kpi-value font-mono">' + s.contractRate.toFixed(1) + '%</div>' + cmpLine(s.contractRate, ps.contractRate, { pp: true }) + '</div>';
     document.getElementById('dashKpiGrid').innerHTML = kpiHtml;
-
-    renderTrendSparklines(now);
     renderPipelineMini();
-    renderContactSpeedMini(thisRows);
-    renderTimeToContractMini(thisRows);
-    renderUnqualTop3(thisRows);
+
+    // "최근 3개월 핵심 지표"는 위 KPI 행("이번 달")과 별개의 기간 기준이다 —
+    // 문의 접수일(inquiry_date) 기준 최근 3개월로 통일해서 트렌드/미니카드 3개가 같은 모집단을 본다.
+    var last3Start = monthsAgoStart(now, 2);
+    var last3Rows = REQ.filter(function (r) { return inMonth(r, last3Start, now); });
+    document.getElementById('last3moPeriodLabel').textContent = fmtDate(last3Start) + ' ~ ' + fmtDate(now) + ' · 문의 접수일 기준';
+
+    renderTrendTable(now, last3Start);
+    renderContactSpeedMini(last3Rows);
+    renderTimeToContractMini(last3Rows);
+    renderUnqualTop3(last3Rows);
   }
 
-  function renderTrendSparklines(now) {
-    var months = [];
-    for (var i = 2; i >= 0; i--) months.push(monthStart(addMonthsUTC(now, -i)));
+  function renderTrendTable(now, last3Start) {
+    var months = [0, 1, 2].map(function (i) { return new Date(Date.UTC(last3Start.getUTCFullYear(), last3Start.getUTCMonth() + i, 1)); });
+    var curMonthIdx = months.length - 1;
     function countInMonth(getter, m) {
-      var next = addMonthsUTC(m, 1);
+      var next = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1));
       return REQ.filter(function (r) { var d = parseISO(getter(r)); return d && d.getTime() >= m.getTime() && d.getTime() < next.getTime(); }).length;
     }
     var inqVals = months.map(function (m) { return countInMonth(function (r) { return r[REQ_IDX.inquiry]; }, m); });
     var conVals = months.map(function (m) { return countInMonth(function (r) { return r[REQ_IDX.contract]; }, m); });
-    var labels = months.map(function (m) { return (m.getUTCMonth() + 1) + '월'; });
-    document.getElementById('trendSparkRow').innerHTML = sparkWidget('문의', inqVals, labels) + sparkWidget('계약', conVals, labels);
-  }
+    var rateVals = inqVals.map(function (v, i) { return v ? conVals[i] / v * 100 : 0; });
+    var labels = months.map(function (m, i) { return (m.getUTCMonth() + 1) + '월' + (i === curMonthIdx ? '*' : ''); });
 
-  function sparkWidget(label, vals, labels) {
-    return '<div class="spark-widget"><div class="spark-widget-label">' + label + ' 추이</div>' +
-      '<div class="spark-widget-chart">' + sparklineSvg(vals) + '</div>' +
-      '<div class="spark-widget-nums">' + vals.map(function (v, i) { return '<span>' + labels[i] + ' ' + v + '건</span>'; }).join('') + '</div></div>';
-  }
-
-  function sparklineSvg(values) {
-    var w = 100, h = 32, pad = 3;
-    var max = Math.max.apply(null, values.concat([1]));
-    var min = Math.min.apply(null, values.concat([0]));
-    var range = (max - min) || 1;
-    var stepX = (w - pad * 2) / Math.max(values.length - 1, 1);
-    var pts = values.map(function (v, i) {
-      var x = pad + i * stepX;
-      var y = h - pad - ((v - min) / range) * (h - pad * 2);
-      return x.toFixed(1) + ',' + y.toFixed(1);
-    });
-    return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="width:100%;height:100%;overflow:visible;">' +
-      '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>' +
-      '</svg>';
+    var thead = '<thead><tr><th></th>' + labels.map(function (l) { return '<th>' + l + '</th>'; }).join('') + '</tr></thead>';
+    function row(label, vals, fmt) {
+      return '<tr><td>' + label + '</td>' + vals.map(function (v) { return '<td class="num font-mono">' + fmt(v) + '</td>'; }).join('') + '</tr>';
+    }
+    var tbody = '<tbody>' +
+      row('문의', inqVals, function (v) { return v.toLocaleString() + '건'; }) +
+      row('계약', conVals, function (v) { return v.toLocaleString() + '건'; }) +
+      row('전환율', rateVals, function (v) { return v.toFixed(1) + '%'; }) +
+      '</tbody>';
+    document.getElementById('trendTableWrap').innerHTML = '<table class="trend-table">' + thead + tbody + '</table>' +
+      '<p class="mini-note" style="margin-top:8px;">* ' + (months[curMonthIdx].getUTCMonth() + 1) + '월은 ' + fmtDate(now) + ' 기준으로 진행 중인 달입니다(월 전체 실적이 아님).</p>';
   }
 
   // ---- 요약 전용 축약 위젯 (상세 버전은 통계에) ----
@@ -1546,8 +1547,11 @@ function initDashboard() {
     });
     var rw = within.total ? within.contracted / within.total * 100 : null;
     var ra = after.total ? after.contracted / after.total * 100 : null;
-    var html = '<div class="mini-compare-row"><span>24시간 이내 첫 연락</span><b>' + (rw != null ? rw.toFixed(1) + '%' : '—') + '</b></div>' +
-      '<div class="mini-compare-row"><span>24시간 이후 첫 연락</span><b>' + (ra != null ? ra.toFixed(1) + '%' : '—') + '</b></div>';
+    function block(label, rate, grp) {
+      return '<div class="mini-rate-block"><div class="mini-rate-row"><span>' + label + '</span><b>' + (rate != null ? rate.toFixed(1) + '%' : '—') + '</b></div>' +
+        '<div class="mini-rate-sub">계약 ' + grp.contracted.toLocaleString() + ' / 전체 ' + grp.total.toLocaleString() + '건</div></div>';
+    }
+    var html = block('24시간 이내 첫 연락 → 계약률', rw, within) + block('24시간 이후 첫 연락 → 계약률', ra, after);
     if (rw != null && ra != null) {
       var diff = rw - ra;
       html += '<div class="mini-diff">차이 ' + (diff >= 0 ? '+' : '') + diff.toFixed(1) + '%p</div>';
@@ -1566,7 +1570,7 @@ function initDashboard() {
     var html = '<div class="mini-big-value">' + (med != null ? med.toFixed(1) + '일' : '—') + '</div>';
     if (days.length) {
       var within3 = days.filter(function (d) { return d <= 3; }).length;
-      html += '<div class="mini-sub">계약의 ' + (within3 / days.length * 100).toFixed(0) + '%가 3일 이내 발생</div>';
+      html += '<div class="mini-sub">계약 ' + days.length.toLocaleString() + '건 중 ' + within3.toLocaleString() + '건(' + (within3 / days.length * 100).toFixed(0) + '%)이 3일 이내 발생</div>';
     }
     document.getElementById('timeToContractMini').innerHTML = html;
   }
@@ -1577,12 +1581,15 @@ function initDashboard() {
     var counts = {};
     unqualified.forEach(function (r) { var k = r[REQ_IDX.unqualifiedReason] || '__missing__'; counts[k] = (counts[k] || 0) + 1; });
     var keys = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; }).slice(0, 3);
-    var html = keys.map(function (k, i) {
-      var label = k === '__missing__' ? '사유 미기록' : (UNQUAL_REASON_LABELS[k] || k);
-      var pct = total ? counts[k] / total * 100 : 0;
-      return '<div class="mini-compare-row"><span>' + (i + 1) + '. ' + label + '</span><b>' + pct.toFixed(0) + '%</b></div>';
-    }).join('');
-    document.getElementById('unqualTop3').innerHTML = html || '<div class="empty-state">데이터가 없습니다.</div>';
+    if (!total) { document.getElementById('unqualTop3').innerHTML = '<div class="empty-state">데이터가 없습니다.</div>'; return; }
+    var html = '<div class="mini-note" style="margin-bottom:8px;">최근 3개월 미전환 ' + total.toLocaleString() + '건 기준</div>' +
+      keys.map(function (k, i) {
+        var label = k === '__missing__' ? '사유 미기록' : (UNQUAL_REASON_LABELS[k] || k);
+        var cnt = counts[k];
+        var pct = cnt / total * 100;
+        return '<div class="mini-compare-row"><span>' + (i + 1) + '. ' + label + '</span><b>' + cnt.toLocaleString() + '건 · ' + pct.toFixed(0) + '%</b></div>';
+      }).join('');
+    document.getElementById('unqualTop3').innerHTML = html;
   }
 
   // 통계 화면에 있는, 기간 필터와 무관한 전체 스냅샷 개요(퍼널/추이/분포) — 한 번만 렌더
@@ -1592,7 +1599,7 @@ function initDashboard() {
     renderActionCenter();
     renderFunnel(REQ);
 
-    var start12 = monthStart(addMonthsUTC(now, -11));
+    var start12 = monthsAgoStart(now, 11);
     renderMonthlyChart(document.getElementById('dashTrendChart'), REQ, function (r) { return r[REQ_IDX.inquiry]; }, start12);
     renderMonthlyChart(document.getElementById('dashContractTrendChart'), REQ, function (r) { return r[REQ_IDX.contract]; }, start12);
 
