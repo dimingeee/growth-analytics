@@ -2154,16 +2154,17 @@ function initDashboard() {
   }
 
   function renderCmpTopDiff(converted, unqualified) {
-    var c = cmpGroupStats(converted), u = cmpGroupStats(unqualified);
+    var convertedExclRetainer = converted.filter(function (r) { return r[REQ_IDX.channel] !== 'additional_retainer'; });
+    var c = cmpGroupStats(converted), cx = cmpGroupStats(convertedExclRetainer), u = cmpGroupStats(unqualified);
     var diffs = [];
     if (c.medContactHours != null && u.medContactHours != null) {
-      diffs.push({ label: '첫 연락 중앙시간', left: c.medContactHours, right: u.medContactHours, fmt: fmtHours });
+      diffs.push({ label: '첫 연락 중앙시간', left: c.medContactHours, leftAlt: cx.medContactHours, right: u.medContactHours, fmt: fmtHours });
     }
     if (c.pctOver24 != null && u.pctOver24 != null) {
-      diffs.push({ label: '24시간 이상 소요 비율', left: c.pctOver24, right: u.pctOver24, fmt: function (v) { return v.toFixed(0) + '%'; }, isPct: true });
+      diffs.push({ label: '24시간 이상 소요 비율', left: c.pctOver24, leftAlt: cx.pctOver24, right: u.pctOver24, fmt: function (v) { return v.toFixed(0) + '%'; }, isPct: true });
     }
     if (c.pctNoContact != null && u.pctNoContact != null) {
-      diffs.push({ label: '연락 기록 없음 비율', left: c.pctNoContact, right: u.pctNoContact, fmt: function (v) { return v.toFixed(0) + '%'; }, isPct: true });
+      diffs.push({ label: '연락 기록 없음 비율', left: c.pctNoContact, leftAlt: cx.pctNoContact, right: u.pctNoContact, fmt: function (v) { return v.toFixed(0) + '%'; }, isPct: true });
     }
     // 채널 비중 차이가 가장 큰 채널 하나
     var cCh = {}, uCh = {};
@@ -2190,6 +2191,7 @@ function initDashboard() {
       var gapStr = (d.isPct ? Math.abs(gap).toFixed(0) + '%p' : d.fmt(Math.abs(gap)));
       return '<div class="diff-card"><div class="diff-card-label">' + d.label + '</div>' +
         '<div class="diff-card-pair"><span>계약</span><b>' + d.fmt(d.left) + '</b></div>' +
+        (d.leftAlt != null ? '<div class="diff-card-pair"><span>계약(추가수임 제외)</span><b>' + d.fmt(d.leftAlt) + '</b></div>' : '') +
         '<div class="diff-card-pair"><span>미전환</span><b>' + d.fmt(d.right) + '</b></div>' +
         '<div class="diff-card-gap">차이 ' + (gap >= 0 ? '+' : '-') + gapStr + '</div></div>';
     }).join('');
