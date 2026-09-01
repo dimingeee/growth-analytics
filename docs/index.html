@@ -71,7 +71,7 @@
     display: flex; flex-direction: column; gap: 22px; padding: 28px 18px;
   }
   .main-content { display: flex; flex-direction: column; gap: 30px; }
-  #viewDashboard, #viewSingle, #viewCompare, #statsMainCards { display: flex; flex-direction: column; gap: 26px; }
+  #viewDashboard, #viewProgress, #viewSingle, #viewCompare, #statsMainCards { display: flex; flex-direction: column; gap: 26px; }
   @media (max-width: 900px) {
     .app-shell { flex-direction: column; min-height: 0; }
     .filters-sidebar { flex: none; width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
@@ -384,16 +384,16 @@
   .diff-card-gap { font-size: 15px; font-weight: 800; color: var(--brick); font-variant-numeric: tabular-nums; }
 
   .status-phase-row {
-    display: grid; grid-template-columns: 96px 1fr 70px; align-items: center; gap: 12px;
+    display: grid; grid-template-columns: 96px 1fr 108px; align-items: center; gap: 12px;
     padding: 7px 4px; border-radius: 8px; cursor: pointer; appearance: none; border: none; background: transparent;
     font-family: inherit; width: 100%; text-align: left;
   }
   .status-phase-row:hover { background: var(--surface-2); }
   .status-phase-name { font-size: 13px; font-weight: 600; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .status-phase-track { position: relative; height: 20px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
-  .status-phase-fill { position: absolute; top: 0; left: 0; height: 100%; background: var(--accent); border-radius: 5px; }
+  .status-phase-fill { position: absolute; top: 0; left: 0; height: 100%; background: var(--accent); border-radius: 5px; max-width: 100%; }
   .status-phase-row.top .status-phase-fill { background: var(--highlight); }
-  .status-phase-count { font-size: 13px; font-weight: 700; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+  .status-phase-count { font-size: 13px; font-weight: 700; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .status-phase-top-note { font-size: 12.5px; color: var(--highlight-ink); font-weight: 600; margin-top: 10px; }
 
   .status-stall-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
@@ -418,6 +418,9 @@
   .status-insights { display: flex; flex-direction: column; gap: 5px; margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--border); }
   .status-insight-line { font-size: 13px; color: var(--ink-2); }
   .status-insight-line b { color: var(--ink); }
+  .status-lead { margin-top: 0; padding-top: 0; border-top: none; margin-bottom: 20px; gap: 8px; }
+  .status-lead .status-insight-line { font-size: 15px; }
+  .status-lead .status-insight-line:first-child { color: var(--ink); font-weight: 600; }
 
   /* contact-speed highlight (24h 이내 vs 이후) */
   .cs-compare { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 18px; margin-bottom: 20px; }
@@ -488,6 +491,7 @@
   <div class="filters-sidebar-inner">
     <div class="nav-links" id="sectionSeg">
       <button data-section="dashboard" class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>요약</button>
+      <button data-section="progress"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 16 14"/></svg>진행 상황</button>
       <button data-section="stats"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg>통계</button>
       <button data-section="detail"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 3 3 7 7 11"/><line x1="3" y1="7" x2="14" y2="7"/><polyline points="17 13 21 17 17 21"/><line x1="21" y1="17" x2="10" y2="17"/></svg>전환 비교</button>
       <button data-section="data"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="3" y1="16" x2="21" y2="16"/><line x1="9" y1="4" x2="9" y2="20"/></svg>데이터</button>
@@ -570,6 +574,7 @@
     <p class="mini-note">분석 단위: Request(문의 기준) · 담당자 필터 없음(문의 단계엔 담당자 데이터가 없어 "통계 → 담당자별 보기"의 사건 기준으로 확인) · 기간을 직접 바꿔가며 분석하려면 "통계" 또는 "전환 비교"를 이용하세요.</p>
 
     <section class="kpi-grid kpi-grid-dash" id="dashKpiGrid"></section>
+    <div id="dashEarlyMonthNote"></div>
 
     <div class="section-divider">현재 파이프라인 <span class="status-period-label">· 현재 시점 · 전체 진행 중 Request 기준</span></div>
 
@@ -606,6 +611,47 @@
       </section>
     </section>
 
+  </div>
+
+  <div id="viewProgress" style="display:none;">
+    <div class="dash-hero">
+      <h2 class="font-head">진행 상황</h2>
+      <p class="subtitle">지금 진행 중인 문의가 어디에 몰려 있고, 무엇부터 처리해야 하는가 · 기간 필터와 무관하게 항상 현재 시점 전체 기준</p>
+    </div>
+
+    <section class="card status-card" id="pipelineCard">
+      <div class="status-insights status-lead" id="statusInsights"></div>
+      <div class="status-block">
+        <div class="status-block-title">진행 중 문의는 현재 어디에 있나?</div>
+        <div id="statusPhaseBars"></div>
+      </div>
+      <div class="status-arrow" aria-hidden="true">↓</div>
+      <div class="status-block">
+        <details class="stall-details">
+          <summary class="status-block-title">현재 단계의 장기 진행 건 · 단계별 3·7·14·30일 경과 상세</summary>
+          <div id="statusStallGrid" class="status-stall-grid"></div>
+          <div class="status-stall-note">단계 진입 시각 기록이 없어 <b>문의 접수일 기준 경과일</b>로 근사한 값입니다(실제 이 단계 체류기간이 아닙니다). 기준선(3·7·14·30일)은 필요 시 코드에서 조정할 수 있습니다.</div>
+        </details>
+      </div>
+    </section>
+
+    <section class="card status-card" id="actionCenterCard">
+      <div class="status-block-title">지금 확인할 것 <span class="status-period-label">· 현재 시점 전체</span></div>
+      <div id="actionCenterGrid" class="action-grid"></div>
+    </section>
+
+    <section class="card" id="statusDrillCard" style="display:none;">
+      <div class="card-head">
+        <div>
+          <div class="card-title" id="statusDrillTitle"></div>
+          <div class="card-title-sub" id="statusDrillSub"></div>
+        </div>
+        <button type="button" class="link-toggle" id="statusDrillClose">닫기</button>
+      </div>
+      <p class="mini-note" style="margin-bottom:12px;">고객사 · 고객명 · 사례번호 · 담당자는 아직 이 화면에 연동되지 않았습니다(데이터 연동 준비 중) · 컬럼 헤더를 클릭하면 정렬됩니다</p>
+      <div class="table-scroll"><table id="statusDrillTable"></table></div>
+      <div class="status-drill-pager" id="statusDrillPager"></div>
+    </section>
   </div>
 
   <div id="statsContent" style="display:none;">
@@ -649,7 +695,10 @@
         </div>
         <div class="card-title-sub">막대에 마우스를 올리면 건수가 표시됩니다</div>
       </div>
-      <div id="mainChart"></div>
+      <div class="charts-2col">
+        <div id="mainChart"></div>
+        <div class="table-scroll"><table id="dataTable"></table></div>
+      </div>
     </section>
 
     <div class="section-divider">유입채널 · IP 유형 <span class="badge-reactive">선택 기간 반응</span></div>
@@ -663,42 +712,6 @@
         <div class="card-head"><div><div class="card-title">IP 유형별 문의 · 계약 · 전환율</div><div class="card-title-sub" id="dashIpSub"></div></div></div>
         <div class="table-scroll"><table id="dashIpTable"></table></div>
       </div>
-    </section>
-
-    <div class="section-divider">진행 상황 <span class="badge-fixed">현재 시점 고정</span></div>
-
-    <section class="card status-card" id="pipelineCard">
-      <div class="status-block">
-        <div class="status-block-title">진행 중 문의는 현재 어디에 있나?</div>
-        <div id="statusPhaseBars"></div>
-      </div>
-      <div class="status-arrow" aria-hidden="true">↓</div>
-      <div class="status-block">
-        <details class="stall-details">
-          <summary class="status-block-title">현재 단계의 장기 진행 건 · 단계별 3·7·14·30일 경과 상세</summary>
-          <div id="statusStallGrid" class="status-stall-grid"></div>
-          <div class="status-stall-note">단계 진입 시각 기록이 없어 <b>문의 접수일 기준 경과일</b>로 근사한 값입니다(실제 이 단계 체류기간이 아닙니다). 기준선(3·7·14·30일)은 필요 시 코드에서 조정할 수 있습니다.</div>
-        </details>
-      </div>
-      <div class="status-insights" id="statusInsights"></div>
-    </section>
-
-    <section class="card status-card" id="actionCenterCard">
-      <div class="status-block-title">지금 확인할 것 <span class="status-period-label">· 현재 시점 전체</span></div>
-      <div id="actionCenterGrid" class="action-grid"></div>
-    </section>
-
-    <section class="card" id="statusDrillCard" style="display:none;">
-      <div class="card-head">
-        <div>
-          <div class="card-title" id="statusDrillTitle"></div>
-          <div class="card-title-sub" id="statusDrillSub"></div>
-        </div>
-        <button type="button" class="link-toggle" id="statusDrillClose">닫기</button>
-      </div>
-      <p class="mini-note" style="margin-bottom:12px;">고객사 · 고객명 · 사례번호 · 담당자는 아직 이 화면에 연동되지 않았습니다(데이터 연동 준비 중) · 컬럼 헤더를 클릭하면 정렬됩니다</p>
-      <div class="table-scroll"><table id="statusDrillTable"></table></div>
-      <div class="status-drill-pager" id="statusDrillPager"></div>
     </section>
 
     <div class="section-divider">퍼널 <span class="badge-fixed">현재 시점 고정</span></div>
@@ -716,13 +729,8 @@
 
     <div class="dash-hero" id="dataHero" style="display:none;">
       <h2 class="font-head">데이터</h2>
-      <p class="subtitle">원본 데이터 표 · 다운로드 · 계산 기준 · 데이터 품질 · 마지막 갱신 시각</p>
+      <p class="subtitle">다운로드 · 계산 기준 · 데이터 품질 · 마지막 갱신 시각 (구간별 건수 표는 "통계 → 구간 소요일수 분포" 카드에서 확인)</p>
     </div>
-
-    <section class="card" id="dataTableCard">
-      <div class="card-head"><div><div class="card-title">전체 데이터</div><div class="card-title-sub">표 형태로 확인</div></div></div>
-      <div class="table-scroll"><table id="dataTable"></table></div>
-    </section>
   </div>
 
   <div id="viewCompare" style="display:none;">
@@ -1562,12 +1570,34 @@ function initDashboard() {
       var d = parseISO(r[REQ_IDX.inquiry]);
       return d && d.getTime() >= start.getTime() && d.getTime() <= end.getTime();
     }
-    var thisRows = REQ.filter(function (r) { return inMonth(r, thisMonthStart, now); });
-    var prevRows = REQ.filter(function (r) { return inMonth(r, prevMonthStart, prevMonthEnd); });
-    var s = computeSummary(thisRows);
-    var ps = computeSummary(prevRows);
 
-    document.getElementById('statusPeriodLabel').textContent = fmtDate(thisMonthStart) + ' ~ ' + fmtDate(now) + ' · 문의 접수일 기준 · 지난달 동일 기간 대비';
+    // 월초 며칠(1~2일)은 "이번 달 1일~오늘" 구간 자체가 너무 짧아 KPI가 텅 비어 보인다.
+    // 이 경우 헤드라인을 "지난달 마감 실적"으로 대체하고, 아직 짧은 이번 달 수치는 캡션으로만 보여준다.
+    var earlyMonthDays = 2; // 이번 달 진행일수가 이 값 이하면 폴백
+    var isEarlyMonth = now.getUTCDate() <= earlyMonthDays;
+    var thisRows, prevRows, s, ps, periodLabelText, earlyNote = '';
+
+    if (isEarlyMonth) {
+      var lastFullEnd = new Date(Date.UTC(thisMonthStart.getUTCFullYear(), thisMonthStart.getUTCMonth(), 0, 23, 59, 59, 999));
+      var lastFullStart = monthStart(lastFullEnd);
+      var prevPrevStart = monthsAgoStart(lastFullStart, 1);
+      var prevPrevEnd = new Date(Date.UTC(lastFullStart.getUTCFullYear(), lastFullStart.getUTCMonth(), 0, 23, 59, 59, 999));
+      thisRows = REQ.filter(function (r) { return inMonth(r, lastFullStart, lastFullEnd); });
+      prevRows = REQ.filter(function (r) { return inMonth(r, prevPrevStart, prevPrevEnd); });
+      s = computeSummary(thisRows);
+      ps = computeSummary(prevRows);
+      periodLabelText = fmtDate(lastFullStart) + ' ~ ' + fmtDate(lastFullEnd) + ' (지난달 마감 실적) · 전전월 동일 기간 대비';
+      var thisMonthSoFar = REQ.filter(function (r) { return inMonth(r, thisMonthStart, now); });
+      earlyNote = '<div class="mini-note" style="margin-top:8px;">' + fmtDate(thisMonthStart) + ' ~ ' + fmtDate(now) + '(이번 달 ' + now.getUTCDate() + '일째)은 아직 데이터가 적어(현재 ' + thisMonthSoFar.length.toLocaleString() + '건) 대신 지난달 마감 실적을 표시하고 있습니다.</div>';
+    } else {
+      thisRows = REQ.filter(function (r) { return inMonth(r, thisMonthStart, now); });
+      prevRows = REQ.filter(function (r) { return inMonth(r, prevMonthStart, prevMonthEnd); });
+      s = computeSummary(thisRows);
+      ps = computeSummary(prevRows);
+      periodLabelText = fmtDate(thisMonthStart) + ' ~ ' + fmtDate(now) + ' · 문의 접수일 기준 · 지난달 동일 기간 대비';
+    }
+
+    document.getElementById('statusPeriodLabel').textContent = periodLabelText;
 
     var icoInbox = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>';
     var icoTarget = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>';
@@ -1582,6 +1612,7 @@ function initDashboard() {
     kpiHtml += '<div class="kpi"><div class="kpi-label">' + icoFolder + '진행 중</div><div class="kpi-value font-mono">' + s.inProgress.length.toLocaleString() + '건</div>' + cmpLine(s.inProgress.length, ps.inProgress.length, { unit: '건' }) + '</div>';
     kpiHtml += '<div class="kpi highlight" title="이번 달 접수된 Request 중 계약 비율"><div class="kpi-label">' + icoRate + '전환율</div><div class="kpi-value font-mono">' + s.contractRate.toFixed(1) + '%</div>' + cmpLine(s.contractRate, ps.contractRate, { pp: true }) + '</div>';
     document.getElementById('dashKpiGrid').innerHTML = kpiHtml;
+    document.getElementById('dashEarlyMonthNote').innerHTML = earlyNote;
     renderPipelineMini();
 
     // "최근 3개월 핵심 지표"는 위 KPI 행("이번 달")과 별개의 기간 기준이다 —
@@ -1632,7 +1663,7 @@ function initDashboard() {
     var html = stageOrder.map(function (st) {
       var c = stageCounts[st];
       var w = max ? c / max * 100 : 0;
-      return '<button type="button" class="status-phase-row" data-goto="stats">' +
+      return '<button type="button" class="status-phase-row" data-goto="progress">' +
         '<span class="status-phase-name">' + (STAGE_LABELS_REQ[st] || st) + '</span>' +
         '<span class="status-phase-track"><span class="status-phase-fill" style="width:' + w.toFixed(1) + '%"></span></span>' +
         '<span class="status-phase-count font-mono">' + c.toLocaleString() + '건</span></button>';
@@ -1895,7 +1926,7 @@ function initDashboard() {
     if (navBtn) navBtn.click();
   });
 
-  document.getElementById('statsContent').addEventListener('click', function (e) {
+  document.getElementById('viewProgress').addEventListener('click', function (e) {
     var btn = e.target.closest('[data-drill]');
     if (!btn) return;
     var d = window._statusData;
@@ -2426,10 +2457,13 @@ function initDashboard() {
     btn.classList.add('active');
     state.section = btn.getAttribute('data-section');
     var isDash = state.section === 'dashboard';
+    var isProgress = state.section === 'progress';
     document.getElementById('viewDashboard').style.display = isDash ? '' : 'none';
-    document.getElementById('statsNavExtra').style.display = isDash ? 'none' : '';
-    document.getElementById('statsContent').style.display = isDash ? 'none' : '';
+    document.getElementById('viewProgress').style.display = isProgress ? '' : 'none';
+    document.getElementById('statsNavExtra').style.display = (isDash || isProgress) ? 'none' : '';
+    document.getElementById('statsContent').style.display = (isDash || isProgress) ? 'none' : '';
     if (isDash) { renderDashboard(); return; }
+    if (isProgress) { renderStatusBlock(); renderActionCenter(); return; }
 
     document.getElementById('dataHero').style.display = state.section === 'data' ? '' : 'none';
     document.getElementById('statsHero').style.display = state.section === 'stats' ? '' : 'none';
@@ -2438,17 +2472,14 @@ function initDashboard() {
     if (state.section === 'stats') {
       document.getElementById('pageSeg').style.display = '';
       document.getElementById('statsMainCards').style.display = '';
-      document.getElementById('dataTableCard').style.display = '';
       if (state.page === 'compare') state.page = 'all';
     } else if (state.section === 'detail') {
       document.getElementById('pageSeg').style.display = 'none';
       document.getElementById('statsMainCards').style.display = '';
-      document.getElementById('dataTableCard').style.display = '';
       state.page = 'compare';
     } else if (state.section === 'data') {
       document.getElementById('pageSeg').style.display = 'none';
       document.getElementById('statsMainCards').style.display = 'none';
-      document.getElementById('dataTableCard').style.display = '';
       if (state.page === 'compare') state.page = 'all';
     }
     setActivePageButton(state.page);
