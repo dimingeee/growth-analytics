@@ -393,7 +393,9 @@
   .status-phase-track { position: relative; height: 20px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
   .status-phase-fill { position: absolute; top: 0; left: 0; height: 100%; background: var(--accent); border-radius: 5px; max-width: 100%; }
   .status-phase-row.top .status-phase-fill { background: var(--highlight); }
+  .status-phase-count-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
   .status-phase-count { font-size: 13px; font-weight: 700; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .status-phase-age { font-size: 11px; font-weight: 600; color: var(--ink-3); white-space: nowrap; }
   .status-phase-top-note { font-size: 12.5px; color: var(--highlight-ink); font-weight: 600; margin-top: 10px; }
 
   .status-stall-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
@@ -616,8 +618,21 @@
   <div id="viewProgress" style="display:none;">
     <div class="dash-hero">
       <h2 class="font-head">진행 상황</h2>
-      <p class="subtitle">지금 진행 중인 문의가 어디에 몰려 있고, 무엇부터 처리해야 하는가 · 기간 필터와 무관하게 항상 현재 시점 전체 기준</p>
+      <p class="subtitle">지금 진행 중인 문의가 어디에 몰려 있고, 무엇부터 처리해야 하는가</p>
     </div>
+
+    <section class="card" style="padding:16px 20px;">
+      <div class="filter-row">
+        <span class="filter-label">기간</span>
+        <div class="seg" id="progressPresetSeg">
+          <button type="button" data-preset="all" class="active">전체 기간</button>
+          <button type="button" data-preset="6m">최근 6개월</button>
+          <button type="button" data-preset="3m">최근 3개월</button>
+          <button type="button" data-preset="1m">최근 1개월</button>
+        </div>
+        <span class="filter-note">문의 접수일 기준 · 아래 진행 현황·장기 정체·지금 확인할 것 전체에 적용됩니다(기본값은 전체 기간 — 오래 방치된 건도 놓치지 않기 위함)</span>
+      </div>
+    </section>
 
     <section class="card status-card" id="pipelineCard">
       <div class="status-insights status-lead" id="statusInsights"></div>
@@ -636,7 +651,7 @@
     </section>
 
     <section class="card status-card" id="actionCenterCard">
-      <div class="status-block-title">지금 확인할 것 <span class="status-period-label">· 현재 시점 전체</span></div>
+      <div class="status-block-title">지금 확인할 것 <span class="status-period-label">· <span id="actionCenterPeriodLabel"></span></span></div>
       <div id="actionCenterGrid" class="action-grid"></div>
     </section>
 
@@ -973,7 +988,7 @@ function initDashboard() {
     { key: 'b4', label: '14일+', max: Infinity }
   ];
 
-  var state = { section: 'dashboard', page: 'all', ds: 'request', preset: 'all', customStart: null, customEnd: null, startKey: 'inquiry', endKey: 'contract', gran: 'auto', assignee: null };
+  var state = { section: 'dashboard', page: 'all', ds: 'request', preset: 'all', customStart: null, customEnd: null, startKey: 'inquiry', endKey: 'contract', gran: 'auto', assignee: null, progressPreset: 'all' };
 
   function parseISO(s) { return s ? new Date(s) : null; }
   function fmtDate(d) { return d.toISOString().slice(0, 10); }
@@ -1774,10 +1789,34 @@ function initDashboard() {
     tableEl.innerHTML = thead + tbody;
   }
 
-  // 진행 중 문의는 항상 "현재 시점 전체"(기간 필터와 무관) 기준 — 오래된 정체 건이 기간 필터로 가려지지 않도록 함
+  // 진행 상황은 기본값이 "전체 기간"이지만(오래 방치된 건이 기본으로 가려지지 않도록), 이미 견적/연락
+  // 후 사실상 이탈한 오래된 건까지 항상 같이 집계되면 최근 유입 상황을 보기 어렵다는 요청으로
+  // 최근 6/3/1개월로 좁혀볼 수 있는 필터를 추가했다 — 기간 프리셋 계산은 통계 페이지의
+  // presetSeg(monthsAgoStart 기반 달력월 정렬)와 동일한 규칙을 그대로 재사용한다.
+  function progressCutoff(now) {
+    if (state.progressPreset === '6m') return monthsAgoStart(now, 5);
+    if (state.progressPreset === '3m') return monthsAgoStart(now, 2);
+    if (state.progressPreset === '1m') return monthStart(now);
+    return null;
+  }
+  function progressPeriodLabel(now, cutoff) {
+    if (!cutoff) return '전체 기간';
+    return fmtDate(cutoff) + ' ~ ' + fmtDate(now) + ' 접수 문의만';
+  }
+  function inProgressFiltered(now) {
+    var cutoff = progressCutoff(now);
+    return REQ.filter(function (r) {
+      if (IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) === -1) return false;
+      if (!cutoff) return true;
+      var d = parseISO(r[REQ_IDX.inquiry]);
+      return d && d.getTime() >= cutoff.getTime();
+    });
+  }
+
   function renderStatusBlock() {
     var now = new Date();
-    var inProgress = REQ.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; });
+    var cutoff = progressCutoff(now);
+    var inProgress = inProgressFiltered(now);
 
     var stageCounts = {};
     inProgress.forEach(function (r) { var st = r[REQ_IDX.stage] || 'unknown'; stageCounts[st] = (stageCounts[st] || 0) + 1; });
@@ -1785,29 +1824,45 @@ function initDashboard() {
     var maxStageCount = Math.max.apply(null, stageOrder.map(function (p) { return stageCounts[p]; }).concat([1]));
     var topStage = stageOrder[0];
 
+    // 단계별 경과일(중앙값/최댓값)을 미리 계산해둔다 — 같은 단계 안에 최근 접수 건과
+    // 오래 방치된(사실상 이탈한) 건이 함께 섞여 카운트되는 걸 건수만으로는 알 수 없어서,
+    // 막대 자체에도 "얼마나 오래된 건들인지"를 같이 보여준다.
+    var stageStats = {};
+    stageOrder.forEach(function (st) {
+      var rows = inProgress.filter(function (r) { return (r[REQ_IDX.stage] || 'unknown') === st; });
+      var elapsed = rows.map(function (r) { return daysSince(r[REQ_IDX.inquiry], now); }).filter(function (v) { return v != null; });
+      stageStats[st] = { rows: rows, elapsed: elapsed, med: medianOf(elapsed) };
+    });
+    var allElapsed = inProgress.map(function (r) { return daysSince(r[REQ_IDX.inquiry], now); }).filter(function (v) { return v != null; });
+    var oldestDays = allElapsed.length ? Math.max.apply(null, allElapsed) : null;
+
     var phaseHtml = '';
     stageOrder.forEach(function (st, i) {
       var c = stageCounts[st];
       var w = maxStageCount ? (c / maxStageCount * 100) : 0;
       var share = inProgress.length ? (c / inProgress.length * 100) : 0;
+      var med = stageStats[st].med;
       phaseHtml += '<button type="button" class="status-phase-row' + (i === 0 && c > 0 ? ' top' : '') + '" data-drill="stage" data-key="' + st + '">' +
         '<span class="status-phase-name">' + (STAGE_LABELS_REQ[st] || st) + '</span>' +
         '<span class="status-phase-track"><span class="status-phase-fill" style="width:' + w.toFixed(1) + '%"></span></span>' +
-        '<span class="status-phase-count font-mono">' + c.toLocaleString() + '건 · ' + share.toFixed(0) + '%</span></button>';
+        '<span class="status-phase-count-wrap">' +
+        '<span class="status-phase-count font-mono">' + c.toLocaleString() + '건 · ' + share.toFixed(0) + '%</span>' +
+        (med != null ? '<span class="status-phase-age font-mono">경과 중앙값 ' + med.toFixed(0) + '일</span>' : '') +
+        '</span></button>';
     });
     if (inProgress.length && stageCounts[topStage] > 0) {
-      phaseHtml += '<div class="status-phase-top-note">현재 진행 중 문의 ' + inProgress.length.toLocaleString() + '건 중 가장 많은 건이 \'' + (STAGE_LABELS_REQ[topStage] || topStage) + '\' 단계에 있습니다.</div>';
+      phaseHtml += '<div class="status-phase-top-note">' + progressPeriodLabel(now, cutoff) + ' 기준 진행 중 문의 ' + inProgress.length.toLocaleString() + '건 중 가장 많은 건이 \'' + (STAGE_LABELS_REQ[topStage] || topStage) + '\' 단계에 있습니다.' + (oldestDays != null ? ' 이 중 가장 오래된 건은 접수 후 ' + oldestDays.toFixed(0) + '일째(약 ' + Math.max(1, Math.round(oldestDays / 30)) + '개월 전 문의) 아직 이 상태입니다.' : '') + ' 오래된 건이 얼마나 섞여 있는지는 각 막대의 \'경과 중앙값\'과 아래 \'장기 진행 상세\'에서 확인하거나, 위 기간 필터로 최근 유입만 좁혀 볼 수 있습니다.</div>';
     }
-    document.getElementById('statusPhaseBars').innerHTML = phaseHtml || '<div class="empty-state">진행 중인 문의가 없습니다.</div>';
+    document.getElementById('statusPhaseBars').innerHTML = phaseHtml || '<div class="empty-state">해당 기간에 진행 중인 문의가 없습니다.</div>';
 
     var stallHtml = '';
     var stallInsights = [];
     stageOrder.forEach(function (st) {
-      var rows = inProgress.filter(function (r) { return (r[REQ_IDX.stage] || 'unknown') === st; });
+      var rows = stageStats[st].rows;
       if (!rows.length) return;
       var label = STAGE_LABELS_REQ[st] || st;
-      var elapsed = rows.map(function (r) { return daysSince(r[REQ_IDX.inquiry], now); }).filter(function (v) { return v != null; });
-      var med = medianOf(elapsed);
+      var elapsed = stageStats[st].elapsed;
+      var med = stageStats[st].med;
 
       var overCounts = STALL_THRESHOLDS.map(function (th) {
         return rows.filter(function (r) { var d = daysSince(r[REQ_IDX.inquiry], now); return d != null && d >= th; }).length;
@@ -1886,10 +1941,11 @@ function initDashboard() {
     document.getElementById('funnelSteps').innerHTML = headHtml + rowsHtml + note;
   }
 
-  // ---- 지금 무엇을 해야 하나? (현재 시점 전체 기준, 기간 필터 무관) ----
+  // ---- 지금 무엇을 해야 하나? (진행 상황 페이지 상단의 기간 필터를 그대로 따른다) ----
   function renderActionCenter() {
     var now = new Date();
-    var inProgress = REQ.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; });
+    var inProgress = inProgressFiltered(now);
+    document.getElementById('actionCenterPeriodLabel').textContent = progressPeriodLabel(now, progressCutoff(now));
     var urgentNew = inProgress.filter(function (r) { return r[REQ_IDX.stage] === 'new' && !r[REQ_IDX.contact] && daysSince(r[REQ_IDX.inquiry], now) >= 1; });
     var quoteFollowup = inProgress.filter(function (r) { return r[REQ_IDX.stage] === 'quote_delivered' && daysSince(r[REQ_IDX.inquiry], now) >= 7; });
     var longStall = inProgress.filter(function (r) { return daysSince(r[REQ_IDX.inquiry], now) >= 30; });
@@ -1935,7 +1991,7 @@ function initDashboard() {
     var key = btn.getAttribute('data-key');
     if (kind === 'stage') {
       var rows = d.allInProgress.filter(function (r) { return (r[REQ_IDX.stage] || 'unknown') === key; });
-      openStatusDrill((STAGE_LABELS_REQ[key] || key) + ' ' + rows.length.toLocaleString() + '건', '현재 진행 중 문의 중 해당 단계 (기간 필터 무관)', rows, { key: 'inquiry', dir: 'desc' });
+      openStatusDrill((STAGE_LABELS_REQ[key] || key) + ' ' + rows.length.toLocaleString() + '건', '진행 중 문의 중 해당 단계 · ' + progressPeriodLabel(d.now, progressCutoff(d.now)), rows, { key: 'inquiry', dir: 'desc' });
     } else if (kind === 'stall') {
       var mode = btn.getAttribute('data-mode'), th = parseFloat(btn.getAttribute('data-th'));
       var base = d.allInProgress.filter(function (r) { return (r[REQ_IDX.stage] || 'unknown') === key; });
@@ -2451,6 +2507,16 @@ function initDashboard() {
   }
 
   // 좌측 상단 4개 섹션: 요약 / 통계(전체·담당자별) / 상세 분석(전환 vs 미전환) / 데이터(표+다운로드)
+  document.getElementById('progressPresetSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button'); if (!btn) return;
+    Array.prototype.forEach.call(document.querySelectorAll('#progressPresetSeg button'), function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    state.progressPreset = btn.getAttribute('data-preset');
+    document.getElementById('statusDrillCard').style.display = 'none';
+    renderStatusBlock();
+    renderActionCenter();
+  });
+
   document.getElementById('sectionSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
     Array.prototype.forEach.call(document.querySelectorAll('#sectionSeg button'), function (b) { b.classList.remove('active'); });
@@ -2463,7 +2529,7 @@ function initDashboard() {
     document.getElementById('statsNavExtra').style.display = (isDash || isProgress) ? 'none' : '';
     document.getElementById('statsContent').style.display = (isDash || isProgress) ? 'none' : '';
     if (isDash) { renderDashboard(); return; }
-    if (isProgress) { renderStatusBlock(); renderActionCenter(); return; }
+    if (isProgress) { document.getElementById('statusDrillCard').style.display = 'none'; renderStatusBlock(); renderActionCenter(); return; }
 
     document.getElementById('dataHero').style.display = state.section === 'data' ? '' : 'none';
     document.getElementById('statsHero').style.display = state.section === 'stats' ? '' : 'none';
