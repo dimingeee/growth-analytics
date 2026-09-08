@@ -1581,9 +1581,16 @@ function initDashboard() {
     var cappedDay = Math.min(now.getUTCDate(), prevMonthDays);
     var prevMonthEnd = new Date(Date.UTC(prevMonthStart.getUTCFullYear(), prevMonthStart.getUTCMonth(), cappedDay, 23, 59, 59, 999));
 
-    function inMonth(r, start, end) {
-      var d = parseISO(r[REQ_IDX.inquiry]);
+    function inRange(d, start, end) {
       return d && d.getTime() >= start.getTime() && d.getTime() <= end.getTime();
+    }
+    function inMonth(r, start, end) {
+      return inRange(parseISO(r[REQ_IDX.inquiry]), start, end);
+    }
+    // "계약" KPI는 문의 코호트가 아니라 계약 체결일 기준 이벤트 카운트로 센다 —
+    // 아래 "기간별 추이" 표(계약 체결일 기준)와 같은 질문("이 기간에 몇 건 계약됐나")에 답하도록 통일.
+    function countContractsInRange(start, end) {
+      return REQ.filter(function (r) { return inRange(parseISO(r[REQ_IDX.contract]), start, end); }).length;
     }
 
     // 월초 며칠(1~2일)은 "이번 달 1일~오늘" 구간 자체가 너무 짧아 KPI가 텅 비어 보인다.
@@ -1591,6 +1598,7 @@ function initDashboard() {
     var earlyMonthDays = 2; // 이번 달 진행일수가 이 값 이하면 폴백
     var isEarlyMonth = now.getUTCDate() <= earlyMonthDays;
     var thisRows, prevRows, s, ps, periodLabelText, earlyNote = '';
+    var contractedNowCount, contractedPrevCount;
 
     if (isEarlyMonth) {
       var lastFullEnd = new Date(Date.UTC(thisMonthStart.getUTCFullYear(), thisMonthStart.getUTCMonth(), 0, 23, 59, 59, 999));
@@ -1601,6 +1609,8 @@ function initDashboard() {
       prevRows = REQ.filter(function (r) { return inMonth(r, prevPrevStart, prevPrevEnd); });
       s = computeSummary(thisRows);
       ps = computeSummary(prevRows);
+      contractedNowCount = countContractsInRange(lastFullStart, lastFullEnd);
+      contractedPrevCount = countContractsInRange(prevPrevStart, prevPrevEnd);
       periodLabelText = fmtDate(lastFullStart) + ' ~ ' + fmtDate(lastFullEnd) + ' (지난달 마감 실적) · 전전월 동일 기간 대비';
       var thisMonthSoFar = REQ.filter(function (r) { return inMonth(r, thisMonthStart, now); });
       earlyNote = '<div class="mini-note" style="margin-top:8px;">' + fmtDate(thisMonthStart) + ' ~ ' + fmtDate(now) + '(이번 달 ' + now.getUTCDate() + '일째)은 아직 데이터가 적어(현재 ' + thisMonthSoFar.length.toLocaleString() + '건) 대신 지난달 마감 실적을 표시하고 있습니다.</div>';
@@ -1609,7 +1619,9 @@ function initDashboard() {
       prevRows = REQ.filter(function (r) { return inMonth(r, prevMonthStart, prevMonthEnd); });
       s = computeSummary(thisRows);
       ps = computeSummary(prevRows);
-      periodLabelText = fmtDate(thisMonthStart) + ' ~ ' + fmtDate(now) + ' · 문의 접수일 기준 · 지난달 동일 기간 대비';
+      contractedNowCount = countContractsInRange(thisMonthStart, now);
+      contractedPrevCount = countContractsInRange(prevMonthStart, prevMonthEnd);
+      periodLabelText = fmtDate(thisMonthStart) + ' ~ ' + fmtDate(now) + ' · 문의 접수일 기준(계약 건수는 계약체결일 기준) · 지난달 동일 기간 대비';
     }
 
     document.getElementById('statusPeriodLabel').textContent = periodLabelText;
@@ -1622,7 +1634,7 @@ function initDashboard() {
 
     var kpiHtml = '';
     kpiHtml += '<div class="kpi"><div class="kpi-label">' + icoInbox + '문의</div><div class="kpi-value font-mono">' + s.total.toLocaleString() + '건</div>' + cmpLine(s.total, ps.total, { unit: '건' }) + '</div>';
-    kpiHtml += '<div class="kpi" title="이번 달 접수된 Request 중 계약(phase=contracted)된 건수"><div class="kpi-label">' + icoTarget + '계약</div><div class="kpi-value font-mono">' + s.contracted.length.toLocaleString() + '건</div>' + cmpLine(s.contracted.length, ps.contracted.length, { unit: '건' }) + '</div>';
+    kpiHtml += '<div class="kpi" title="이번 달 계약이 체결된 건수(계약체결일 기준, 문의 접수 시점과 무관)"><div class="kpi-label">' + icoTarget + '계약</div><div class="kpi-value font-mono">' + contractedNowCount.toLocaleString() + '건</div>' + cmpLine(contractedNowCount, contractedPrevCount, { unit: '건' }) + '</div>';
     kpiHtml += '<div class="kpi" title="이번 달 접수된 Request 중 미전환(phase=unqualified) 처리된 건수"><div class="kpi-label">' + icoX + '미전환</div><div class="kpi-value font-mono">' + s.unqualified.length.toLocaleString() + '건</div>' + cmpLine(s.unqualified.length, ps.unqualified.length, { unit: '건' }) + '</div>';
     kpiHtml += '<div class="kpi"><div class="kpi-label">' + icoFolder + '진행 중</div><div class="kpi-value font-mono">' + s.inProgress.length.toLocaleString() + '건</div>' + cmpLine(s.inProgress.length, ps.inProgress.length, { unit: '건' }) + '</div>';
     kpiHtml += '<div class="kpi highlight" title="이번 달 접수된 Request 중 계약 비율"><div class="kpi-label">' + icoRate + '전환율</div><div class="kpi-value font-mono">' + s.contractRate.toFixed(1) + '%</div>' + cmpLine(s.contractRate, ps.contractRate, { pp: true }) + '</div>';
