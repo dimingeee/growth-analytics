@@ -494,8 +494,9 @@
     <div class="nav-links" id="sectionSeg">
       <button data-section="dashboard" class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>요약</button>
       <button data-section="progress"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 16 14"/></svg>진행 상황</button>
-      <button data-section="stats"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg>통계</button>
       <button data-section="detail"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 3 3 7 7 11"/><line x1="3" y1="7" x2="14" y2="7"/><polyline points="17 13 21 17 17 21"/><line x1="21" y1="17" x2="10" y2="17"/></svg>전환 비교</button>
+      <button data-section="retainer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>재수임 분석</button>
+      <button data-section="stats"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg>통계</button>
       <button data-section="data"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="3" y1="16" x2="21" y2="16"/><line x1="9" y1="4" x2="9" y2="20"/></svg>데이터</button>
     </div>
 
@@ -578,7 +579,7 @@
     <section class="kpi-grid kpi-grid-dash" id="dashKpiGrid"></section>
     <div id="dashEarlyMonthNote"></div>
 
-    <div class="section-divider">현재 파이프라인 <span class="status-period-label">· 현재 시점 · 전체 진행 중 Request 기준</span></div>
+    <div class="section-divider">현재 파이프라인 <span class="status-period-label">· 이번 달 문의 중 진행 중인 것 기준</span></div>
 
     <section class="card">
       <div class="status-block-title" id="pipelineMiniTitle"></div>
@@ -590,6 +591,8 @@
         <h3>최근 3개월 핵심 지표</h3>
         <p id="last3moPeriodLabel"></p>
       </div>
+
+      <section class="kpi-grid kpi-grid-sm" id="last3moHeadline"></section>
 
       <section class="card">
         <div class="card-title" style="margin-bottom:14px;">월별 문의 · 계약 · 전환율</div>
@@ -625,12 +628,12 @@
       <div class="filter-row">
         <span class="filter-label">기간</span>
         <div class="seg" id="progressPresetSeg">
-          <button type="button" data-preset="all" class="active">전체 기간</button>
+          <button type="button" data-preset="all">전체 기간</button>
           <button type="button" data-preset="6m">최근 6개월</button>
-          <button type="button" data-preset="3m">최근 3개월</button>
+          <button type="button" data-preset="3m" class="active">최근 3개월</button>
           <button type="button" data-preset="1m">최근 1개월</button>
         </div>
-        <span class="filter-note">문의 접수일 기준 · 아래 진행 현황·장기 정체·지금 확인할 것 전체에 적용됩니다(기본값은 전체 기간 — 오래 방치된 건도 놓치지 않기 위함)</span>
+        <span class="filter-note">문의 접수일 기준 · 아래 진행 현황·장기 정체·지금 확인할 것 전체에 적용됩니다(기본값은 최근 3개월 — 오래된 건까지 보려면 전체 기간으로 바꾸세요)</span>
       </div>
     </section>
 
@@ -669,6 +672,33 @@
     </section>
   </div>
 
+  <div id="viewRetainer" style="display:none;">
+    <div class="dash-hero">
+      <h2 class="font-head">재수임 분석</h2>
+      <p class="subtitle">기존 고객이 다시 의뢰하는가 — 재위임 문의와 신규 문의는 무엇이 다른가</p>
+    </div>
+
+    <section class="kpi-grid kpi-grid-sm" id="retainerKpiGrid"></section>
+
+    <section class="card">
+      <div class="card-head"><div><div class="card-title">재위임 문의 vs 신규 문의</div><div class="card-title-sub" id="retainerChannelSub">문의 건수 · 계약 전환율 비교</div></div></div>
+      <div class="table-scroll"><table id="retainerChannelTable"></table></div>
+    </section>
+
+    <div class="section-divider">회사 단위 재위임 패턴 <span class="badge-fixed">현재 시점 고정</span></div>
+    <p class="mini-note" id="retainerCompanyNote"></p>
+
+    <section class="card">
+      <div class="card-head"><div><div class="card-title">재위임까지 걸린 기간</div><div class="card-title-sub" id="retainerGapSub"></div></div></div>
+      <div id="retainerGapChart"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><div><div class="card-title">위임 유형 조합</div><div class="card-title-sub">2건 이상 수임한 회사가 실제로 어떤 IP 유형을 함께/따로 맡겼는가</div></div></div>
+      <div class="table-scroll"><table id="retainerComboTable"></table></div>
+    </section>
+  </div>
+
   <div id="statsContent" style="display:none;">
   <div style="display:flex; justify-content:flex-end;">
     <button class="btn-download" id="downloadBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M5 21h14"/></svg>데이터 다운로드</button>
@@ -679,6 +709,22 @@
       <p class="subtitle">전체 데이터에서 어떤 패턴과 추이가 있는가</p>
     </div>
     <div id="statsMainCards">
+    <div class="section-divider">유입채널 · IP 유형별 전환 성과 <span class="badge-reactive">선택 기간 반응</span></div>
+
+    <section class="kpi-grid kpi-grid-sm" id="medianKpiGrid"></section>
+    <p class="mini-note" id="medianKpiSub"></p>
+
+    <section class="dash-mini-grid dash-mini-grid-2">
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">유입 채널별 문의 · 계약 · 전환율</div><div class="card-title-sub" id="dashChannelSub"></div></div></div>
+        <div class="table-scroll"><table id="dashChannelTable"></table></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">IP 유형별 문의 · 계약 · 전환율</div><div class="card-title-sub" id="dashIpSub"></div></div></div>
+        <div class="table-scroll"><table id="dashIpTable"></table></div>
+      </div>
+    </section>
+
     <div class="section-divider">추이 · 소요일 <span class="badge-reactive">선택 기간 반응</span></div>
 
     <section class="kpi-grid kpi-grid-sm" id="kpiGrid"></section>
@@ -716,19 +762,6 @@
       </div>
     </section>
 
-    <div class="section-divider">유입채널 · IP 유형 <span class="badge-reactive">선택 기간 반응</span></div>
-
-    <section class="dash-mini-grid dash-mini-grid-2">
-      <div class="card">
-        <div class="card-head"><div><div class="card-title">유입 채널별 문의 · 계약 · 전환율</div><div class="card-title-sub" id="dashChannelSub"></div></div></div>
-        <div class="table-scroll"><table id="dashChannelTable"></table></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><div><div class="card-title">IP 유형별 문의 · 계약 · 전환율</div><div class="card-title-sub" id="dashIpSub"></div></div></div>
-        <div class="table-scroll"><table id="dashIpTable"></table></div>
-      </div>
-    </section>
-
     <div class="section-divider">퍼널 <span class="badge-fixed">현재 시점 고정</span></div>
 
     <section class="card" id="funnelCard">
@@ -761,11 +794,6 @@
     </section>
 
     <section class="card">
-      <div class="card-head"><div><div class="card-title">전환 / 미전환의 가장 큰 차이</div></div></div>
-      <div id="cmpTopDiffGrid" class="action-grid"></div>
-    </section>
-
-    <section class="card">
       <div class="card-head"><div><div class="card-title">첫 연락이 늦으면 계약률이 떨어지나?</div><div class="card-title-sub">첫 연락 속도 비교</div></div></div>
       <div id="cmpContactSpeedMetrics"></div>
     </section>
@@ -773,6 +801,11 @@
     <section class="card">
       <div class="card-head"><div><div class="card-title">첫 연락 시간대별 실제 전환율</div></div></div>
       <div class="table-scroll"><table id="cmpContactRateTable"></table></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><div><div class="card-title">전환 / 미전환의 가장 큰 차이</div></div></div>
+      <div id="cmpTopDiffGrid" class="action-grid"></div>
     </section>
 
     <section class="card" id="cmpQuoteSpeedCard">
@@ -988,7 +1021,7 @@ function initDashboard() {
     { key: 'b4', label: '14일+', max: Infinity }
   ];
 
-  var state = { section: 'dashboard', page: 'all', ds: 'request', preset: 'all', customStart: null, customEnd: null, startKey: 'inquiry', endKey: 'contract', gran: 'auto', assignee: null, progressPreset: 'all' };
+  var state = { section: 'dashboard', page: 'all', ds: 'request', preset: 'all', customStart: null, customEnd: null, startKey: 'inquiry', endKey: 'contract', gran: 'auto', assignee: null, progressPreset: '3m' };
 
   function parseISO(s) { return s ? new Date(s) : null; }
   function fmtDate(d) { return d.toISOString().slice(0, 10); }
@@ -1263,6 +1296,8 @@ function initDashboard() {
       document.getElementById('dataTable').innerHTML = '';
       document.getElementById('dashChannelTable').innerHTML = '';
       document.getElementById('dashIpTable').innerHTML = '';
+      document.getElementById('medianKpiGrid').innerHTML = '';
+      document.getElementById('medianKpiSub').textContent = '';
       return;
     }
 
@@ -1332,6 +1367,38 @@ function initDashboard() {
       document.getElementById('dashIpTable').innerHTML = '';
       document.getElementById('dashIpSub').textContent = '사건 단위 보기에서는 지원되지 않습니다(요청 단위 필드).';
     }
+    renderMedianTimeKpis(rows, periodNote);
+  }
+
+  // 통계 페이지 최상단 요약 — 사용자가 startKey/endKey로 어떤 구간을 보고 있든 관계없이
+  // 항상 고정된 두 질문("첫 연락까지", "계약까지" 얼마나 걸리나)에 답하는 카드.
+  // 평균 대신 중앙값을 쓰는 이유는 이 데이터셋의 소요시간 분포가 소수 극단값에 크게
+  // 휘둘리기 때문(전환비교 페이지에서 이미 확인된 패턴).
+  function renderMedianTimeKpis(rows, periodNote) {
+    var el = document.getElementById('medianKpiGrid');
+    var sub = document.getElementById('medianKpiSub');
+    if (state.ds !== 'request') {
+      el.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">사건 단위 보기에서는 지원되지 않습니다(요청 단위 필드).</div>';
+      sub.textContent = '';
+      return;
+    }
+    var contactHours = [];
+    rows.forEach(function (r) {
+      var i = parseISO(r[REQ_IDX.inquiry]), c = parseISO(r[REQ_IDX.contact]);
+      if (i && c) { var h = (c.getTime() - i.getTime()) / 3600000; if (h >= 0) contactHours.push(h); }
+    });
+    var contractDays = [];
+    rows.forEach(function (r) {
+      if (r[REQ_IDX.phase] !== 'contracted') return;
+      var i = parseISO(r[REQ_IDX.inquiry]), c = parseISO(r[REQ_IDX.contract]);
+      if (i && c) { var d = (c.getTime() - i.getTime()) / 86400000; if (d >= 0) contractDays.push(d); }
+    });
+    var medContact = medianOf(contactHours), medContract = medianOf(contractDays);
+    var html = '';
+    html += '<div class="kpi"><div class="kpi-label">문의 → 첫 연락 중앙 소요시간</div><div class="kpi-value font-mono">' + (medContact != null ? fmtHours(medContact) : '—') + '</div><div class="kpi-sub">기록 있는 ' + contactHours.length.toLocaleString() + '건 기준</div></div>';
+    html += '<div class="kpi"><div class="kpi-label">문의 → 계약 중앙 소요일</div><div class="kpi-value font-mono">' + (medContract != null ? medContract.toFixed(1) + '일' : '—') + '</div><div class="kpi-sub">계약 ' + contractDays.length.toLocaleString() + '건 기준</div></div>';
+    el.innerHTML = html;
+    sub.textContent = periodNote;
   }
 
   function monthStart(d) { return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)); }
@@ -1640,18 +1707,42 @@ function initDashboard() {
     kpiHtml += '<div class="kpi highlight" title="이번 달 접수된 Request 중 계약 비율"><div class="kpi-label">' + icoRate + '전환율</div><div class="kpi-value font-mono">' + s.contractRate.toFixed(1) + '%</div>' + cmpLine(s.contractRate, ps.contractRate, { pp: true }) + '</div>';
     document.getElementById('dashKpiGrid').innerHTML = kpiHtml;
     document.getElementById('dashEarlyMonthNote').innerHTML = earlyNote;
-    renderPipelineMini();
+    renderPipelineMini(thisRows);
 
     // "최근 3개월 핵심 지표"는 위 KPI 행("이번 달")과 별개의 기간 기준이다 —
     // 문의 접수일(inquiry_date) 기준 최근 3개월로 통일해서 트렌드/미니카드 3개가 같은 모집단을 본다.
     var last3Start = monthsAgoStart(now, 2);
     var last3Rows = REQ.filter(function (r) { return inMonth(r, last3Start, now); });
+    var prev3Start = monthsAgoStart(last3Start, 3);
+    var prev3End = new Date(last3Start.getTime() - 1);
+    var prev3Rows = REQ.filter(function (r) { return inMonth(r, prev3Start, prev3End); });
     document.getElementById('last3moPeriodLabel').textContent = fmtDate(last3Start) + ' ~ ' + fmtDate(now) + ' · 문의 접수일 기준';
 
+    renderLast3moHeadline(last3Rows, prev3Rows);
     renderTrendTable(now, last3Start);
     renderContactSpeedMini(last3Rows);
     renderTimeToContractMini(last3Rows);
     renderUnqualTop3(last3Rows);
+  }
+
+  // 최근 3개월 신규 문의 중 결과가 확정된 것(전환/미전환)만으로 전환율을 본다 —
+  // 진행 중 문의는 아직 결과가 없어 분모에 넣으면 전환율이 실제보다 낮게 왜곡된다.
+  function renderLast3moHeadline(rows, prevRows) {
+    var contracted = rows.filter(function (r) { return r[REQ_IDX.phase] === 'contracted'; });
+    var unqualified = rows.filter(function (r) { return r[REQ_IDX.phase] === 'unqualified'; });
+    var decided = contracted.length + unqualified.length;
+    var rate = decided ? contracted.length / decided * 100 : 0;
+
+    var pContracted = prevRows.filter(function (r) { return r[REQ_IDX.phase] === 'contracted'; });
+    var pUnqualified = prevRows.filter(function (r) { return r[REQ_IDX.phase] === 'unqualified'; });
+    var pDecided = pContracted.length + pUnqualified.length;
+    var pRate = pDecided ? pContracted.length / pDecided * 100 : 0;
+
+    var html = '';
+    html += '<div class="kpi highlight"><div class="kpi-label">전환</div><div class="kpi-value font-mono">' + contracted.length.toLocaleString() + '건</div>' + cmpLine(contracted.length, pContracted.length, { unit: '건' }) + '</div>';
+    html += '<div class="kpi"><div class="kpi-label">미전환</div><div class="kpi-value font-mono">' + unqualified.length.toLocaleString() + '건</div>' + cmpLine(unqualified.length, pUnqualified.length, { unit: '건' }) + '</div>';
+    html += '<div class="kpi highlight"><div class="kpi-label">결과 확정 문의 전환율</div><div class="kpi-value font-mono">' + rate.toFixed(1) + '%</div>' + cmpLine(rate, pRate, { pp: true }) + '<div class="kpi-sub">전환 ' + contracted.length.toLocaleString() + ' / 결과 확정 ' + decided.toLocaleString() + '건(진행 중 제외)</div></div>';
+    document.getElementById('last3moHeadline').innerHTML = html;
   }
 
   function renderTrendTable(now, last3Start) {
@@ -1680,8 +1771,10 @@ function initDashboard() {
   }
 
   // ---- 요약 전용 축약 위젯 (상세 버전은 통계에) ----
-  function renderPipelineMini() {
-    var inProgress = REQ.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; });
+  // rows는 "이번 달 문의 접수분"으로 이미 좁혀져 들어온다 — 위 KPI 행의 "진행 중" 건수와
+  // 항상 같은 모집단(코호트)을 보여주기 위함. 전체 기간 진행 중 건은 "진행 상황" 탭에서 본다.
+  function renderPipelineMini(rows) {
+    var inProgress = rows.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; });
     document.getElementById('pipelineMiniTitle').textContent = '진행 중 ' + inProgress.length.toLocaleString() + '건';
     var stageCounts = {};
     inProgress.forEach(function (r) { var st = r[REQ_IDX.stage] || 'unknown'; stageCounts[st] = (stageCounts[st] || 0) + 1; });
@@ -2049,6 +2142,112 @@ function initDashboard() {
     var bestIdx = 0, bestVal = -1;
     for (var i = 0; i < 5; i++) if (values[i] > bestVal) { bestVal = values[i]; bestIdx = i; }
     renderBarChart(document.getElementById(prefix + 'Chart'), { values: values, labels: labels, valueLabels: valueLabels, tooltips: tooltips, unit: '%', bestIdx: bestIdx, mutedIdx: [5] });
+  }
+
+  // 재수임 분석 — company_id가 아직 동기화되지 않았으면(REQ_IDX.companyId 없음) 회사 단위
+  // 분석(재위임까지 걸린 기간 · 위임 유형 조합)은 건너뛰고 안내만 표시한다. 채널 기반 비교
+  // (재위임 문의 vs 신규 문의)는 channel='additional_retainer' 값이 이미 있어 즉시 가능하다.
+  function hasCompanyId() { return typeof REQ_IDX.companyId !== 'undefined'; }
+
+  function buildCompanyCaseHistory() {
+    if (!hasCompanyId()) return [];
+    var reqById = {};
+    REQ.forEach(function (r) { reqById[r[REQ_IDX.id]] = r; });
+    var byCompany = {};
+    CASES.forEach(function (c) {
+      var req = reqById[c[CASE_IDX.requestId]];
+      var companyId = req && req[REQ_IDX.companyId];
+      if (!companyId) return;
+      var d = c[CASE_IDX.commission] || c[CASE_IDX.contractDate];
+      if (!d) return;
+      if (!byCompany[companyId]) byCompany[companyId] = [];
+      byCompany[companyId].push({ date: d, ipType: c[CASE_IDX.ipType] });
+    });
+    return Object.keys(byCompany).map(function (id) {
+      var cases = byCompany[id].slice().sort(function (a, b) { return parseISO(a.date).getTime() - parseISO(b.date).getTime(); });
+      return { id: id, cases: cases };
+    });
+  }
+
+  function renderRetainerAnalysis() {
+    renderRateTable(
+      document.getElementById('retainerChannelTable'),
+      document.getElementById('retainerChannelSub'),
+      REQ,
+      function (r) { return r[REQ_IDX.channel] === 'additional_retainer' ? 'repeat' : 'new'; },
+      { repeat: '재위임 문의(기존 고객)', new: '신규 문의' },
+      '전체 기간 · 문의 접수일 기준'
+    );
+
+    var companies = buildCompanyCaseHistory();
+    if (!hasCompanyId()) {
+      document.getElementById('retainerKpiGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;">회사 식별 데이터 연동 준비 중입니다 — 연동되면 아래 "재위임까지 걸린 기간"·"위임 유형 조합"이 채워집니다.</div>';
+      document.getElementById('retainerCompanyNote').textContent = '';
+      document.getElementById('retainerGapChart').innerHTML = '';
+      document.getElementById('retainerGapSub').textContent = '';
+      document.getElementById('retainerComboTable').innerHTML = '';
+      return;
+    }
+
+    var repeatCompanies = companies.filter(function (c) { return c.cases.length >= 2; });
+    var repeatShare = companies.length ? repeatCompanies.length / companies.length * 100 : 0;
+    var kpiHtml = '';
+    kpiHtml += '<div class="kpi"><div class="kpi-label">전체 고객사</div><div class="kpi-value font-mono">' + companies.length.toLocaleString() + '개</div></div>';
+    kpiHtml += '<div class="kpi highlight"><div class="kpi-label">재위임 고객사</div><div class="kpi-value font-mono">' + repeatCompanies.length.toLocaleString() + '개</div></div>';
+    kpiHtml += '<div class="kpi"><div class="kpi-label">재위임 비중</div><div class="kpi-value font-mono">' + repeatShare.toFixed(1) + '%</div></div>';
+    document.getElementById('retainerKpiGrid').innerHTML = kpiHtml;
+    document.getElementById('retainerCompanyNote').textContent = '사건 2건 이상 수임한 회사 ' + repeatCompanies.length.toLocaleString() + '개 기준(수임일 없는 사건은 계약체결일로 대체, 그마저 없으면 제외)';
+
+    var gaps = [];
+    repeatCompanies.forEach(function (c) {
+      for (var i = 1; i < c.cases.length; i++) {
+        var d = daysBetween(parseISO(c.cases[i - 1].date), parseISO(c.cases[i].date));
+        if (d >= 0) gaps.push(d);
+      }
+    });
+    var gMed = medianOf(gaps);
+    document.getElementById('retainerGapSub').textContent = (gMed != null ? '중앙값 ' + gMed.toFixed(0) + '일 · ' : '') + '연속 재위임 간격 ' + gaps.length.toLocaleString() + '건 기준';
+    if (!gaps.length) {
+      document.getElementById('retainerGapChart').innerHTML = '<div class="empty-state">재위임 간격을 계산할 데이터가 없습니다.</div>';
+    } else {
+      var gapBuckets = [
+        { key: 'g0', label: '30일 이내', max: 30 },
+        { key: 'g1', label: '30~90일', max: 90 },
+        { key: 'g2', label: '90~180일', max: 180 },
+        { key: 'g3', label: '180~365일', max: 365 },
+        { key: 'g4', label: '1년+', max: Infinity }
+      ];
+      function gapBucketOf(d) { for (var i = 0; i < gapBuckets.length; i++) if (d <= gapBuckets[i].max) return gapBuckets[i].key; return gapBuckets[gapBuckets.length - 1].key; }
+      var gapCounts = {}; gapBuckets.forEach(function (b) { gapCounts[b.key] = 0; });
+      gaps.forEach(function (d) { gapCounts[gapBucketOf(d)]++; });
+      var gValues = gapBuckets.map(function (b) { return gaps.length ? gapCounts[b.key] / gaps.length * 100 : 0; });
+      renderBarChart(document.getElementById('retainerGapChart'), {
+        values: gValues,
+        labels: gapBuckets.map(function (b) { return { main: b.label, sub: 'n=' + gapCounts[b.key] }; }),
+        valueLabels: gValues.map(function (v) { return v.toFixed(1) + '%'; }),
+        tooltips: gapBuckets.map(function (b) { return gapCounts[b.key].toLocaleString() + '건 (' + (gaps.length ? (gapCounts[b.key] / gaps.length * 100).toFixed(1) : '0') + '%)'; }),
+        unit: '%'
+      });
+    }
+
+    var comboCounts = {}, comboOrder = [];
+    repeatCompanies.forEach(function (c) {
+      var types = {};
+      c.cases.forEach(function (cs) { if (cs.ipType) types[IP_LABELS[cs.ipType] || cs.ipType] = true; });
+      var combo = Object.keys(types).sort().join(' + ') || '(미기록)';
+      if (!(combo in comboCounts)) { comboCounts[combo] = 0; comboOrder.push(combo); }
+      comboCounts[combo]++;
+    });
+    comboOrder.sort(function (a, b) { return comboCounts[b] - comboCounts[a]; });
+    if (!comboOrder.length) {
+      document.getElementById('retainerComboTable').innerHTML = '<tbody><tr><td class="empty-state" colspan="2">데이터가 없습니다.</td></tr></tbody>';
+    } else {
+      var comboThead = '<thead><tr><th>위임 유형 조합</th><th>고객사 수</th></tr></thead>';
+      var comboTbody = '<tbody>' + comboOrder.map(function (k) {
+        return '<tr><td>' + escapeHtml(k) + '</td><td class="num font-mono">' + comboCounts[k].toLocaleString() + '개</td></tr>';
+      }).join('') + '</tbody>';
+      document.getElementById('retainerComboTable').innerHTML = comboThead + comboTbody;
+    }
   }
 
   function renderCompare() {
@@ -2536,12 +2735,15 @@ function initDashboard() {
     state.section = btn.getAttribute('data-section');
     var isDash = state.section === 'dashboard';
     var isProgress = state.section === 'progress';
+    var isRetainer = state.section === 'retainer';
     document.getElementById('viewDashboard').style.display = isDash ? '' : 'none';
     document.getElementById('viewProgress').style.display = isProgress ? '' : 'none';
-    document.getElementById('statsNavExtra').style.display = (isDash || isProgress) ? 'none' : '';
-    document.getElementById('statsContent').style.display = (isDash || isProgress) ? 'none' : '';
+    document.getElementById('viewRetainer').style.display = isRetainer ? '' : 'none';
+    document.getElementById('statsNavExtra').style.display = (isDash || isProgress || isRetainer) ? 'none' : '';
+    document.getElementById('statsContent').style.display = (isDash || isProgress || isRetainer) ? 'none' : '';
     if (isDash) { renderDashboard(); return; }
     if (isProgress) { document.getElementById('statusDrillCard').style.display = 'none'; renderStatusBlock(); renderActionCenter(); return; }
+    if (isRetainer) { renderRetainerAnalysis(); return; }
 
     document.getElementById('dataHero').style.display = state.section === 'data' ? '' : 'none';
     document.getElementById('statsHero').style.display = state.section === 'stats' ? '' : 'none';
