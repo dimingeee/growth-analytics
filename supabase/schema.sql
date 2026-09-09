@@ -16,8 +16,16 @@ create table if not exists funnel_rows (
   first_contact_at timestamptz,
   first_quote_at timestamptz,
   first_contract_at timestamptz,
-  unqualified_reason text
+  unqualified_reason text,
+  source_platform text,
+  source_campaign text,
+  source_creative text
 );
+
+-- 기존 프로젝트에도 안전하게 유입 상세 컬럼을 추가한다.
+alter table funnel_rows add column if not exists source_platform text;
+alter table funnel_rows add column if not exists source_campaign text;
+alter table funnel_rows add column if not exists source_creative text;
 
 -- 사건 단위 데이터 (계약 체결 이후 진행 상황)
 create table if not exists case_rows (
