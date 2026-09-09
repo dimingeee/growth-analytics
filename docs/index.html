@@ -824,25 +824,14 @@
     </section>
 
     <div class="analysis-section-head">
-      <h3>2. 유입 플랫폼별 전환 파악</h3>
-      <p>Instagram·Facebook·Google·Naver·GPT처럼 실제 식별 가능한 플랫폼만 비교합니다.</p>
-    </div>
-
-    <section class="card">
-      <div class="card-head"><div><div class="card-title">플랫폼별 계약 전환율</div><div class="card-title-sub">플랫폼으로 확인되지 않는 광고명·코드값은 제외</div></div></div>
-      <div class="table-scroll"><table id="cmpPlatformTable"></table></div>
-      <div id="cmpAttributionNote" class="data-limit-note"></div>
-    </section>
-
-    <div class="analysis-section-head">
-      <h3>3. 채널별 리드 Quality</h3>
-      <p>리드 수뿐 아니라 확정 전환율·견적 도달률·초기 응대 품질을 한 번에 비교합니다.</p>
+      <h3>2. 유입 채널·플랫폼별 리드 Quality</h3>
+      <p>Instagram·Facebook 등 식별 가능한 플랫폼을 우선 사용하고, 나머지는 기본 유입 채널로 묶어 한 기준으로 비교합니다.</p>
     </div>
 
     <section class="card">
       <div class="card-head"><div><div class="card-title">채널별 리드 품질</div><div class="card-title-sub">구매의사 대체지표: 첫 견적 기록 보유 여부</div></div></div>
       <div class="table-scroll"><table id="cmpChannelQualityTable"></table></div>
-      <div class="quality-legend">전환율은 계약·미전환으로 결과가 확정된 리드만 분모로 사용합니다. 구매의사 필드가 아직 없어 견적 도달률을 임시 대체지표로 표시합니다. CTR·CPM·CPL·CAC는 광고비·노출·클릭 데이터 연동 후 계산합니다.</div>
+      <div class="quality-legend">리드는 진행 중을 포함한 전체 건수이며, 확정 전환율은 계약 ÷ (계약 + 미전환)입니다. 구매의사 필드가 없어 견적 도달률을 임시 대체지표로 표시합니다. CTR·CPM·CPL·CAC는 광고비·노출·클릭 데이터 연동 후 계산합니다.</div>
     </section>
 
     <div class="section-divider">기타 참고 분석 <span class="badge-fixed">핵심 3개 분석 외</span></div>
@@ -2337,7 +2326,6 @@ function initDashboard() {
     renderCmpContactRateTable(periodRows);
     renderCmpStageJourney(periodRows, converted, unqualified);
     renderCmp2DistTable('cmpIpTable', converted, unqualified, function (r) { return r[REQ_IDX.category] || '(미기록)'; }, null);
-    renderCmpAttribution(converted, unqualified);
     renderCmpChannelQuality(periodRows);
     renderCmp2DistTable('cmpWeekdayTable', converted, unqualified, function (r) { return weekdayKR(r[REQ_IDX.inquiry]); }, null);
     renderCmp2DistTable('cmpHourTable', converted, unqualified, function (r) { return isBusinessHour(r[REQ_IDX.inquiry]) ? '업무시간 내(09~18시)' : '업무시간 외'; }, null);
@@ -2397,18 +2385,20 @@ function initDashboard() {
     var docsCount = active.filter(function (r) { return r[REQ_IDX.stage] === 'waiting_for_docs'; }).length;
     document.getElementById('cmpRequestStageSnapshot').innerHTML =
       '<b>계약 기준:</b> 계약군은 <code class="k">phase=contracted</code>이므로 계약 도달률은 100%로 표시합니다. 계약일 중앙값은 실제 계약일 기록이 있는 건만 계산합니다.<br><b>신규 → 자료 전달 분석 상태:</b> 현재 진행 중 스냅샷은 신규 접수 <b>' + newCount.toLocaleString() + '건</b>, 자료 대기 <b>' + docsCount.toLocaleString() + '건</b>입니다. ' +
-      '다만 Request 단계 변경일이 저장되지 않아 이 두 수를 전환율이나 체류기간으로 해석할 수 없습니다. <code class="k">request_stage_histories</code> 연동 후 정확한 신규→자료 전달 전환율과 단계 체류기간으로 교체해야 합니다.';
+      'Bassip 원본에는 문의 단계 이력 테이블이 없고, 계약 후 사건 단계용 <code class="k">case_stage_histories</code>만 존재합니다. 따라서 현재 두 수는 스냅샷이며 신규→자료 전달 전환율이나 체류기간으로 해석할 수 없습니다.';
   }
 
   function renderCmpChannelQuality(periodRows) {
     var groups = {};
     periodRows.forEach(function (r) {
       var key = attributionPlatform(r) || r[REQ_IDX.channel] || '(미기록)';
-      if (!groups[key]) groups[key] = { total: 0, confirmed: 0, converted: 0, quoted: 0, contacted24: 0, contactKnown: 0 };
+      if (!groups[key]) groups[key] = { total: 0, confirmed: 0, converted: 0, unqualified: 0, progress: 0, quoted: 0, contacted24: 0, contactKnown: 0 };
       var g = groups[key];
       g.total++;
       if (r[REQ_IDX.phase] === 'contracted' || r[REQ_IDX.phase] === 'unqualified') g.confirmed++;
       if (r[REQ_IDX.phase] === 'contracted') g.converted++;
+      if (r[REQ_IDX.phase] === 'unqualified') g.unqualified++;
+      if (r[REQ_IDX.phase] !== 'contracted' && r[REQ_IDX.phase] !== 'unqualified') g.progress++;
       if (r[REQ_IDX.quote]) g.quoted++;
       var a = parseISO(r[REQ_IDX.inquiry]), b = parseISO(r[REQ_IDX.contact]);
       if (a && b && b.getTime() >= a.getTime()) {
@@ -2422,13 +2412,16 @@ function initDashboard() {
       var confidence = g.confirmed >= 30 ? '충분' : (g.confirmed >= 10 ? '참고' : '표본 적음');
       return '<tr><td>' + escapeHtml(CHANNEL_LABELS_CMP[key] || key) + '</td>' +
         '<td class="num font-mono">' + g.total.toLocaleString() + '</td>' +
+        '<td class="num font-mono">' + g.converted.toLocaleString() + '</td>' +
+        '<td class="num font-mono">' + g.unqualified.toLocaleString() + '</td>' +
+        '<td class="num font-mono">' + g.progress.toLocaleString() + '</td>' +
         '<td class="num font-mono">' + pctText(pct(g.converted, g.confirmed)) + '</td>' +
         '<td class="num font-mono">' + pctText(pct(g.quoted, g.total)) + '</td>' +
         '<td class="num font-mono">' + pctText(pct(g.contacted24, g.contactKnown)) + '</td>' +
         '<td>' + confidence + '</td><td class="num font-mono">연동 전</td><td class="num font-mono">연동 전</td></tr>';
     }).join('');
     document.getElementById('cmpChannelQualityTable').innerHTML =
-      '<thead><tr><th>채널/플랫폼</th><th>리드</th><th>확정 전환율</th><th>견적 도달률</th><th>24시간 내 연락</th><th>신뢰도</th><th>CPL</th><th>CAC</th></tr></thead><tbody>' + body + '</tbody>';
+      '<thead><tr><th>채널/플랫폼</th><th>전체 리드</th><th>계약</th><th>미전환</th><th>진행 중</th><th>확정 전환율</th><th>견적 도달률</th><th>24시간 내 연락</th><th>신뢰도</th><th>CPL</th><th>CAC</th></tr></thead><tbody>' + body + '</tbody>';
   }
 
   function attributionPlatform(r) {
@@ -2442,13 +2435,6 @@ function initDashboard() {
     if (low.indexOf('naver') !== -1 || low.indexOf('네이버') !== -1) return 'Naver';
     if (low.indexOf('chatgpt') !== -1 || low.indexOf('openai') !== -1 || low === 'gpt') return 'GPT';
     return '';
-  }
-
-  function renderCmpAttribution(converted, unqualified) {
-    renderCmp2DistTable('cmpPlatformTable', converted.filter(function (r) { return !!attributionPlatform(r); }), unqualified.filter(function (r) { return !!attributionPlatform(r); }), attributionPlatform, null);
-    var all = converted.concat(unqualified);
-    var platformN = all.filter(function (r) { return !!attributionPlatform(r); }).length;
-    document.getElementById('cmpAttributionNote').innerHTML = '<span class="metric-available">플랫폼 식별:</span> ' + platformN.toLocaleString() + '건. 플랫폼으로 명확히 확인되는 값만 집계하고 광고명·세트명·코드값은 제외했습니다.';
   }
 
   function weekdayKR(dateStr) {
