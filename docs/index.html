@@ -391,6 +391,17 @@
   .quality-legend { margin-top: 10px; font-size: 12px; color: var(--ink-3); line-height: 1.55; }
   .metric-available { color: var(--accent-ink); font-weight: 700; }
   .metric-pending { color: var(--warn-ink); font-weight: 700; }
+  #cmpStageJourneyTable th:nth-child(5), #cmpStageJourneyTable td:nth-child(5) {
+    background: var(--accent-tint); color: var(--accent-ink); font-weight: 700;
+    border-left: 3px solid var(--accent);
+  }
+  #cmpStageJourneyTable th:nth-child(6), #cmpStageJourneyTable td:nth-child(6) {
+    background: color-mix(in srgb, var(--brick) 9%, var(--surface)); color: var(--brick); font-weight: 700;
+    border-left: 3px solid var(--brick);
+  }
+  #cmpStageJourneyTable th:nth-child(5), #cmpStageJourneyTable th:nth-child(6) {
+    font-size: 12px; text-transform: none; letter-spacing: 0;
+  }
 
   .status-phase-row {
     display: grid; grid-template-columns: 96px 1fr 108px; align-items: center; gap: 12px;
@@ -2378,7 +2389,7 @@ function initDashboard() {
         '<td class="num font-mono">' + pctText(pct(uReach, unqualified.length)) + (uMed == null ? '' : ' · ' + uMed.toFixed(1) + '일') + '</td></tr>';
     }).join('');
     document.getElementById('cmpStageJourneyTable').innerHTML =
-      '<thead><tr><th>단계</th><th>도달</th><th>전체 도달률</th><th>직전 기록 대비</th><th>계약군 도달률·중앙값</th><th>미전환군 도달률·중앙값</th></tr></thead><tbody>' + rowsHtml + '</tbody>';
+      '<thead><tr><th>단계</th><th>도달</th><th>전체 도달률</th><th>직전 기록 대비</th><th>● 계약군<br>도달률 · 접수 후 중앙값</th><th>● 미전환군<br>도달률 · 접수 후 중앙값</th></tr></thead><tbody>' + rowsHtml + '</tbody>';
 
     var active = periodRows.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; });
     var newCount = active.filter(function (r) { return r[REQ_IDX.stage] === 'new'; }).length;
