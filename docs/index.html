@@ -383,6 +383,15 @@
   .diff-card-pair b { color: var(--ink); font-variant-numeric: tabular-nums; }
   .diff-card-gap { font-size: 15px; font-weight: 800; color: var(--brick); font-variant-numeric: tabular-nums; }
 
+  /* 전환 비교 확장: 단계 → 소재/유입 → 채널 품질 */
+  .analysis-section-head { margin: 26px 0 12px; }
+  .analysis-section-head h3 { margin: 0 0 4px; font-size: 17px; color: var(--ink); }
+  .analysis-section-head p { margin: 0; font-size: 12.5px; color: var(--ink-3); }
+  .data-limit-note { margin-top: 12px; padding: 12px 14px; border-radius: 8px; background: var(--warn-tint); color: var(--warn-ink); font-size: 12.5px; line-height: 1.55; }
+  .quality-legend { margin-top: 10px; font-size: 12px; color: var(--ink-3); line-height: 1.55; }
+  .metric-available { color: var(--accent-ink); font-weight: 700; }
+  .metric-pending { color: var(--warn-ink); font-weight: 700; }
+
   .status-phase-row {
     display: grid; grid-template-columns: 96px 1fr 108px; align-items: center; gap: 12px;
     padding: 7px 4px; border-radius: 8px; cursor: pointer; appearance: none; border: none; background: transparent;
@@ -793,6 +802,17 @@
       <div class="status-outcome-caption">결과가 확정된 두 그룹만 비교합니다(진행 중 문의 제외) · 기준: 문의 접수일</div>
     </section>
 
+    <div class="analysis-section-head">
+      <h3>1. 단계별 전환 파악</h3>
+      <p>문의 접수 → 첫 연락 → 첫 견적 → 계약의 도달률과 체류기간을 계약·미전환별로 비교합니다.</p>
+    </div>
+
+    <section class="card">
+      <div class="card-head"><div><div class="card-title">단계별 도달률 · 체류기간</div><div class="card-title-sub">접수일 기준 코호트 · 중앙값 사용</div></div></div>
+      <div class="table-scroll"><table id="cmpStageJourneyTable"></table></div>
+      <div id="cmpRequestStageSnapshot" class="data-limit-note"></div>
+    </section>
+
     <section class="card">
       <div class="card-head"><div><div class="card-title">첫 연락이 늦으면 계약률이 떨어지나?</div><div class="card-title-sub">첫 연락 속도 비교</div></div></div>
       <div id="cmpContactSpeedMetrics"></div>
@@ -813,8 +833,13 @@
       <div id="cmpQuoteSpeedMetrics"></div>
     </section>
 
+    <div class="analysis-section-head">
+      <h3>2. 소재별 전환 파악</h3>
+      <p>현재 저장된 유입 채널 성과를 먼저 비교하고, 플랫폼·캠페인·소재는 데이터 연동 상태를 함께 표시합니다.</p>
+    </div>
+
     <section class="card">
-      <div class="card-head"><div><div class="card-title">유입 채널 · IP 유형 비교</div></div></div>
+      <div class="card-head"><div><div class="card-title">유입 채널 · IP 유형 비교</div><div class="card-title-sub">웹 세부 플랫폼/소재는 아직 원본 미러에 없음</div></div></div>
       <div class="charts-2col">
         <div>
           <div class="card-title-sub" style="margin-bottom:8px;">유입 채널</div>
@@ -825,6 +850,18 @@
           <div class="table-scroll"><table id="cmpIpTable"></table></div>
         </div>
       </div>
+      <div class="data-limit-note"><span class="metric-available">현재 가능:</span> 웹·전화·추천·카카오톡·이메일별 전환 비교 &nbsp;·&nbsp; <span class="metric-pending">추가 연동 필요:</span> Instagram/Facebook, 캠페인, 광고세트, 소재명·소재 주제. 이 값이 들어오면 같은 표가 플랫폼 → 캠페인 → 소재 순으로 확장됩니다.</div>
+    </section>
+
+    <div class="analysis-section-head">
+      <h3>3. 채널별 리드 Quality</h3>
+      <p>리드 수뿐 아니라 확정 전환율·견적 도달률·초기 응대 품질을 한 번에 비교합니다.</p>
+    </div>
+
+    <section class="card">
+      <div class="card-head"><div><div class="card-title">채널별 리드 품질</div><div class="card-title-sub">구매의사 대체지표: 첫 견적 기록 보유 여부</div></div></div>
+      <div class="table-scroll"><table id="cmpChannelQualityTable"></table></div>
+      <div class="quality-legend">전환율은 계약·미전환으로 결과가 확정된 리드만 분모로 사용합니다. 구매의사 필드가 아직 없어 견적 도달률을 임시 대체지표로 표시합니다. CTR·CPM·CPL·CAC는 광고비·노출·클릭 데이터 연동 후 계산합니다.</div>
     </section>
 
     <section class="card">
@@ -2310,8 +2347,10 @@ function initDashboard() {
     }
     renderCmpContactSpeed(converted, unqualified);
     renderCmpContactRateTable(periodRows);
+    renderCmpStageJourney(periodRows, converted, unqualified);
     renderCmp2DistTable('cmpChannelTable', converted, unqualified, function (r) { return r[REQ_IDX.channel] || '(미기록)'; }, CHANNEL_LABELS_CMP);
     renderCmp2DistTable('cmpIpTable', converted, unqualified, function (r) { return r[REQ_IDX.category] || '(미기록)'; }, null);
+    renderCmpChannelQuality(periodRows);
     renderCmp2DistTable('cmpWeekdayTable', converted, unqualified, function (r) { return weekdayKR(r[REQ_IDX.inquiry]); }, null);
     renderCmp2DistTable('cmpHourTable', converted, unqualified, function (r) { return isBusinessHour(r[REQ_IDX.inquiry]) ? '업무시간 내(09~18시)' : '업무시간 외'; }, null);
     renderCmpQuoteSpeed(converted, unqualified);
@@ -2319,6 +2358,87 @@ function initDashboard() {
   }
 
   var CHANNEL_LABELS_CMP = { web: '웹', phone: '전화', referral: '추천', kakao: '카카오톡', email: '이메일', additional_retainer: '추가 위임', '(미기록)': '(미기록)' };
+
+  function pct(n, d) { return d ? n / d * 100 : null; }
+  function pctText(v) { return v == null ? '—' : v.toFixed(1) + '%'; }
+
+  function milestoneReach(rows, idx) {
+    return rows.filter(function (r) { return !!r[idx]; }).length;
+  }
+
+  function milestoneMedianDays(rows, idx) {
+    if (idx === REQ_IDX.inquiry) return 0;
+    var values = rows.map(function (r) {
+      var a = parseISO(r[REQ_IDX.inquiry]), b = parseISO(r[idx]);
+      return a && b && b.getTime() >= a.getTime() ? daysBetween(a, b) : null;
+    }).filter(function (v) { return v != null; });
+    return medianOf(values);
+  }
+
+  function renderCmpStageJourney(periodRows, converted, unqualified) {
+    var steps = [
+      { label: '문의 접수', idx: REQ_IDX.inquiry },
+      { label: '첫 연락', idx: REQ_IDX.contact },
+      { label: '첫 견적', idx: REQ_IDX.quote },
+      { label: '계약', idx: REQ_IDX.contract }
+    ];
+    var rowsHtml = steps.map(function (s, i) {
+      var reached = milestoneReach(periodRows, s.idx);
+      var previousRecorded = i === 0 ? periodRows.length : milestoneReach(periodRows, steps[i - 1].idx);
+      var sequentialReached = i === 0 ? periodRows.length : periodRows.filter(function (r) { return !!r[steps[i - 1].idx] && !!r[s.idx]; }).length;
+      var sequential = pct(sequentialReached, previousRecorded);
+      var cReach = milestoneReach(converted, s.idx);
+      var uReach = milestoneReach(unqualified, s.idx);
+      var med = milestoneMedianDays(periodRows, s.idx);
+      return '<tr><td>' + s.label + '</td>' +
+        '<td class="num font-mono">' + reached.toLocaleString() + '건</td>' +
+        '<td class="num font-mono">' + pctText(pct(reached, periodRows.length)) + '</td>' +
+        '<td class="num font-mono">' + pctText(sequential) + '</td>' +
+        '<td class="num font-mono">' + pctText(pct(cReach, converted.length)) + '</td>' +
+        '<td class="num font-mono">' + pctText(pct(uReach, unqualified.length)) + '</td>' +
+        '<td class="num font-mono">' + (med == null ? '—' : med.toFixed(1) + '일') + '</td></tr>';
+    }).join('');
+    document.getElementById('cmpStageJourneyTable').innerHTML =
+      '<thead><tr><th>단계</th><th>도달</th><th>전체 도달률</th><th>직전 기록 대비</th><th>계약군</th><th>미전환군</th><th>접수→도달 중앙값</th></tr></thead><tbody>' + rowsHtml + '</tbody>';
+
+    var active = periodRows.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; });
+    var newCount = active.filter(function (r) { return r[REQ_IDX.stage] === 'new'; }).length;
+    var docsCount = active.filter(function (r) { return r[REQ_IDX.stage] === 'waiting_for_docs'; }).length;
+    document.getElementById('cmpRequestStageSnapshot').innerHTML =
+      '<b>신규 → 자료 전달 분석 상태:</b> 현재 진행 중 스냅샷은 신규 접수 <b>' + newCount.toLocaleString() + '건</b>, 자료 대기 <b>' + docsCount.toLocaleString() + '건</b>입니다. ' +
+      '다만 Request 단계 변경일이 저장되지 않아 이 두 수를 전환율이나 체류기간으로 해석할 수 없습니다. <code class="k">request_stage_histories</code> 연동 후 정확한 신규→자료 전달 전환율과 단계 체류기간으로 교체해야 합니다.';
+  }
+
+  function renderCmpChannelQuality(periodRows) {
+    var groups = {};
+    periodRows.forEach(function (r) {
+      var key = r[REQ_IDX.channel] || '(미기록)';
+      if (!groups[key]) groups[key] = { total: 0, confirmed: 0, converted: 0, quoted: 0, contacted24: 0, contactKnown: 0 };
+      var g = groups[key];
+      g.total++;
+      if (r[REQ_IDX.phase] === 'contracted' || r[REQ_IDX.phase] === 'unqualified') g.confirmed++;
+      if (r[REQ_IDX.phase] === 'contracted') g.converted++;
+      if (r[REQ_IDX.quote]) g.quoted++;
+      var a = parseISO(r[REQ_IDX.inquiry]), b = parseISO(r[REQ_IDX.contact]);
+      if (a && b && b.getTime() >= a.getTime()) {
+        g.contactKnown++;
+        if ((b.getTime() - a.getTime()) / 3600000 <= 24) g.contacted24++;
+      }
+    });
+    var keys = Object.keys(groups).sort(function (a, b) { return groups[b].total - groups[a].total; });
+    var body = keys.map(function (key) {
+      var g = groups[key];
+      var confidence = g.confirmed >= 30 ? '충분' : (g.confirmed >= 10 ? '참고' : '표본 적음');
+      return '<tr><td>' + escapeHtml(CHANNEL_LABELS_CMP[key] || key) + '</td>' +
+        '<td class="num font-mono">' + g.total.toLocaleString() + '</td>' +
+        '<td class="num font-mono">' + pctText(pct(g.converted, g.confirmed)) + '</td>' +
+        '<td class="num font-mono">' + pctText(pct(g.quoted, g.total)) + '</td>' +
+        '<td class="num font-mono">' + pctText(pct(g.contacted24, g.contactKnown)) + '</td>' +
+        '<td>' + confidence + '</td><td class="num font-mono">연동 전</td><td class="num font-mono">연동 전</td></tr>';
+    }).join('');
+    document.getElementById('cmpChannelQualityTable').innerHTML =
+      '<thead><tr><th>채널</th><th>리드</th><th>확정 전환율</th><th>견적 도달률</th><th>24시간 내 연락</th><th>신뢰도</th><th>CPL</th><th>CAC</th></tr></thead><tbody>' + body + '</tbody>';
+  }
 
   function weekdayKR(dateStr) {
     var d = parseISO(dateStr);
