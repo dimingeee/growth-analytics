@@ -42,24 +42,7 @@ select coalesce(json_agg(row_to_json(t)), '[]'::json) from (
       nullif(to_jsonb(r)->>'utm_source', ''),
       nullif(to_jsonb(r)#>>'{metadata,utm_source}', ''),
       nullif(to_jsonb(r)#>>'{marketing,platform}', '')
-    ) as source_platform,
-    coalesce(
-      nullif(to_jsonb(r)->>'source_campaign', ''),
-      nullif(to_jsonb(r)->>'campaign', ''),
-      nullif(to_jsonb(r)->>'campaign_name', ''),
-      nullif(to_jsonb(r)->>'utm_campaign', ''),
-      nullif(to_jsonb(r)#>>'{metadata,utm_campaign}', ''),
-      nullif(to_jsonb(r)#>>'{marketing,campaign}', '')
-    ) as source_campaign,
-    coalesce(
-      nullif(to_jsonb(r)->>'source_creative', ''),
-      nullif(to_jsonb(r)->>'creative', ''),
-      nullif(to_jsonb(r)->>'creative_name', ''),
-      nullif(to_jsonb(r)->>'ad_name', ''),
-      nullif(to_jsonb(r)->>'utm_content', ''),
-      nullif(to_jsonb(r)#>>'{metadata,utm_content}', ''),
-      nullif(to_jsonb(r)#>>'{marketing,creative}', '')
-    ) as source_creative
+    ) as source_platform
   from public.requests r
   left join first_contact fc on fc.request_id = r.id
   left join first_quote fq on fq.request_id = r.id
