@@ -11,8 +11,6 @@ QFILE="$(cd "$(dirname "$0")" && pwd)/neon_export.sql"
 # 기존 Supabase 프로젝트를 별도 수동 마이그레이션 없이 확장한다.
 psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
 alter table funnel_rows add column if not exists source_platform text;
-alter table funnel_rows add column if not exists source_campaign text;
-alter table funnel_rows add column if not exists source_creative text;
 SQL
 
 # neon_export.sql에서 "-- @query: <name>" 블록 하나를 뽑아 순수 SQL만 반환
@@ -48,8 +46,8 @@ SQL
 }
 
 sync_table "funnel_rows" "funnel_rows" \
-  "id, inquiry_at, category, channel, phase, stage, first_contact_at, first_quote_at, first_contract_at, unqualified_reason, source_platform, source_campaign, source_creative" \
-  "id text, inquiry_at timestamptz, category text, channel text, phase text, stage text, first_contact_at timestamptz, first_quote_at timestamptz, first_contract_at timestamptz, unqualified_reason text, source_platform text, source_campaign text, source_creative text"
+  "id, inquiry_at, category, channel, phase, stage, first_contact_at, first_quote_at, first_contract_at, unqualified_reason, source_platform" \
+  "id text, inquiry_at timestamptz, category text, channel text, phase text, stage text, first_contact_at timestamptz, first_quote_at timestamptz, first_contract_at timestamptz, unqualified_reason text, source_platform text"
 
 sync_table "case_rows" "case_rows" \
   "id, request_id, inquiry_at, first_contact_at, first_quote_at, contract_date, commission_date, filing_official_date, registration_official_date, ip_type, category, assignee_id" \
@@ -59,6 +57,6 @@ sync_table "case_stage_events" "case_stage_events" \
   "case_id, stage, changed_at" \
   "case_id text, stage text, changed_at timestamptz"
 
-psql "$SUPABASE_DB_URL" -t -A -c "select '유입상세 집계: platform=' || count(source_platform) || ', campaign=' || count(source_campaign) || ', creative=' || count(source_creative) from funnel_rows;"
+psql "$SUPABASE_DB_URL" -t -A -c "select '유입 플랫폼 집계: 전체값=' || count(source_platform) || ', 식별가능=' || count(*) filter (where lower(source_platform) ~ 'instagram|인스타|facebook|페이스북|meta|메타|google|구글|naver|네이버|chatgpt|openai|gpt') from funnel_rows;"
 
 echo "모든 테이블 동기화 완료."
