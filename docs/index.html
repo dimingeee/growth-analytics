@@ -391,13 +391,9 @@
   .quality-legend { margin-top: 10px; font-size: 12px; color: var(--ink-3); line-height: 1.55; }
   .metric-available { color: var(--accent-ink); font-weight: 700; }
   .metric-pending { color: var(--warn-ink); font-weight: 700; }
-  .cmp-focus-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
-  .cmp-focus-card { border:1px solid var(--border); border-radius:12px; padding:17px 18px; background:var(--surface); box-shadow:var(--shadow); }
-  .cmp-focus-card .n { width:27px; height:27px; display:grid; place-items:center; border-radius:8px; background:var(--accent); color:#fff; font-weight:800; font-size:12px; margin-bottom:12px; }
-  .cmp-focus-card b { display:block; font-size:14px; margin-bottom:4px; }
-  .cmp-focus-card span { display:block; font-size:12px; color:var(--ink-3); line-height:1.45; }
   .stage-journey { display:grid; grid-template-columns:repeat(4,minmax(180px,1fr)); gap:12px; }
-  .stage-card { border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--surface); }
+  .stage-card { border:1px solid var(--border); border-radius:12px; overflow:visible; background:var(--surface); position:relative; }
+  .stage-card:not(:last-child)::after { content:'→'; position:absolute; right:-19px; top:50%; transform:translateY(-50%); width:26px; height:26px; display:grid; place-items:center; border-radius:50%; background:var(--surface); border:1px solid var(--border); color:var(--accent); font-weight:900; z-index:2; }
   .stage-card-head { padding:13px 15px; background:var(--surface-2); display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
   .stage-card-head b { font-size:14px; }
   .stage-card-head span { font-size:11.5px; color:var(--ink-3); }
@@ -417,13 +413,20 @@
   .channel-highlight .val { font-size:24px; font-weight:850; margin-top:5px; color:var(--ink); }
   .channel-highlight.primary .val { color:var(--accent-ink); }
   .channel-highlight .desc { font-size:12px; color:var(--ink-2); margin-top:3px; }
-  .content-action { display:grid; grid-template-columns:44px 1fr; gap:14px; padding:18px 20px; border-radius:12px; background:var(--highlight-tint); border:1px solid var(--highlight); }
-  .content-action-icon { width:44px; height:44px; display:grid; place-items:center; border-radius:12px; background:var(--highlight); color:#fff; font-size:20px; }
-  .content-action h4 { margin:0 0 5px; font-size:15px; color:var(--highlight-ink); }
-  .content-action p { margin:0; font-size:13px; color:var(--ink-2); }
   .quality-rate { font-size:15px; font-weight:850; color:var(--accent-ink); }
-  @media(max-width:1000px){.stage-journey{grid-template-columns:repeat(2,1fr)}.cmp-focus-grid,.channel-highlights{grid-template-columns:1fr}}
-  @media(max-width:620px){.stage-journey{grid-template-columns:1fr}}
+  .cmp2-metrics-grid { grid-template-columns:repeat(4,1fr) !important; gap:12px !important; }
+  .cmp2-metrics-grid .cmp2-metric { border:1px solid var(--border); border-radius:12px; padding:15px 16px; background:var(--surface-2); }
+  .platform-performance { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; }
+  .platform-card { border:1px solid var(--border); border-radius:12px; padding:16px; }
+  .platform-card-head { display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:13px; }
+  .platform-card-head b { font-size:14px; }
+  .platform-card-head span { font-size:11px; color:var(--ink-3); }
+  .platform-metric { display:flex; justify-content:space-between; align-items:baseline; margin-top:8px; font-size:12px; color:var(--ink-2); }
+  .platform-metric strong { font-size:18px; color:var(--accent-ink); }
+  .platform-track { height:7px; background:var(--surface-2); border-radius:9px; overflow:hidden; margin-top:5px; }
+  .platform-fill { height:100%; background:var(--accent); border-radius:9px; }
+  @media(max-width:1000px){.stage-journey{grid-template-columns:repeat(2,1fr)}.stage-card::after{display:none!important}.channel-highlights,.cmp2-metrics-grid{grid-template-columns:1fr 1fr!important}}
+  @media(max-width:620px){.stage-journey{grid-template-columns:1fr}.cmp2-metrics-grid{grid-template-columns:1fr!important}}
 
   .status-phase-row {
     display: grid; grid-template-columns: 96px 1fr 108px; align-items: center; gap: 12px;
@@ -835,12 +838,6 @@
       <div class="status-outcome-caption">결과가 확정된 두 그룹만 비교합니다(진행 중 문의 제외) · 기준: 문의 접수일</div>
     </section>
 
-    <div class="cmp-focus-grid">
-      <div class="cmp-focus-card"><div class="n">1</div><b>어느 단계에서 갈리는가</b><span>계약·미전환의 단계 도달률과 접수 후 소요일 비교</span></div>
-      <div class="cmp-focus-card"><div class="n">2</div><b>어떤 유입이 계약되는가</b><span>Instagram·Facebook·Google 등 채널별 리드 품질 비교</span></div>
-      <div class="cmp-focus-card"><div class="n">3</div><b>무엇을 더 발행할 것인가</b><span>전환율과 견적 도달률을 근거로 콘텐츠 우선순위 제안</span></div>
-    </div>
-
     <div class="analysis-section-head">
       <h3>1. 단계별 전환 파악</h3>
       <p>문의 접수 → 첫 연락 → 첫 견적 → 계약에서 두 그룹이 어디서 갈리는지 확인합니다.</p>
@@ -863,8 +860,18 @@
     </section>
 
     <div class="analysis-section-head">
-      <h3>2. 어떤 유입이 계약으로 이어지나?</h3>
-      <p>식별 가능한 플랫폼을 우선 사용하고, 나머지는 기본 유입 채널로 묶어 비교합니다.</p>
+      <h3>2. 소재별 전환 파악</h3>
+      <p>원본에 식별된 Instagram·Facebook·Google·Naver·GPT 등 유입 소재·플랫폼별 전환 성과를 비교합니다.</p>
+    </div>
+
+    <section class="card">
+      <div class="card-head"><div><div class="card-title">유입 소재·플랫폼별 전환 성과</div><div class="card-title-sub">막대: 확정 전환율 · 함께 보기: 견적 도달률</div></div></div>
+      <div id="cmpPlatformPerformance" class="platform-performance"></div>
+    </section>
+
+    <div class="analysis-section-head">
+      <h3>3. 채널별 리드 Quality 파악</h3>
+      <p>전환율·견적 도달률·초기 연락 속도로 유입 리드의 질을 비교합니다.</p>
     </div>
 
     <section class="card">
@@ -873,12 +880,6 @@
       <div class="table-scroll"><table id="cmpChannelQualityTable"></table></div>
       <div class="quality-legend">전환율 = 계약 ÷ (계약 + 미전환). 진행 중은 전환율 분모에서 제외합니다. 구매의사 직접 기록이 없어 견적 도달률을 관심도 대체지표로 사용합니다.</div>
     </section>
-
-    <div class="analysis-section-head">
-      <h3>3. 콘텐츠 발행 액션</h3>
-      <p>현재 데이터에서 성과가 확인된 유입의 주제와 형식을 우선 반복합니다.</p>
-    </div>
-    <section id="cmpContentAction" class="content-action"></section>
 
     <div class="section-divider">기타 참고 분석 <span class="badge-fixed">핵심 3개 분석 외</span></div>
 
@@ -2372,6 +2373,7 @@ function initDashboard() {
     renderCmpContactRateTable(periodRows);
     renderCmpStageJourney(periodRows, converted, unqualified);
     renderCmp2DistTable('cmpIpTable', converted, unqualified, function (r) { return r[REQ_IDX.category] || '(미기록)'; }, null);
+    renderCmpPlatformPerformance(periodRows);
     renderCmpChannelQuality(periodRows);
     renderCmp2DistTable('cmpWeekdayTable', converted, unqualified, function (r) { return weekdayKR(r[REQ_IDX.inquiry]); }, null);
     renderCmp2DistTable('cmpHourTable', converted, unqualified, function (r) { return isBusinessHour(r[REQ_IDX.inquiry]) ? '업무시간 내(09~18시)' : '업무시간 외'; }, null);
@@ -2469,21 +2471,35 @@ function initDashboard() {
       return '<tr' + (key === bestKey ? ' class="rate-best"' : '') + '><td><b>' + escapeHtml(labelOf(key)) + '</b></td>' +
         '<td class="num font-mono">' + g.total.toLocaleString() + '</td>' +
         '<td class="num font-mono">' + g.confirmed.toLocaleString() + '건</td>' +
-        '<td class="num font-mono"><span class="quality-rate">' + pctText(pct(g.converted, g.confirmed)) + '</span><br><small>' + g.converted + ' 계약 · ' + g.unqualified + ' 미전환</small></td>' +
-        '<td class="num font-mono">' + pctText(pct(g.quoted, g.total)) + '</td>' +
+        '<td>' + rateCellHtml(pct(g.converted, g.confirmed) || 0, 100) + '<small>' + g.converted + ' 계약 · ' + g.unqualified + ' 미전환</small></td>' +
+        '<td>' + rateCellHtml(pct(g.quoted, g.total) || 0, 100) + '</td>' +
         '<td class="num font-mono">' + pctText(pct(g.contacted24, g.contactKnown)) + '</td>' +
         '<td>' + confidence + '</td></tr>';
     }).join('');
     document.getElementById('cmpChannelQualityTable').innerHTML =
       '<thead><tr><th>채널/플랫폼</th><th>전체 리드</th><th>확정 표본</th><th>확정 전환율</th><th>견적 도달률</th><th>24시간 내 연락</th><th>판단 신뢰도</th></tr></thead><tbody>' + body + '</tbody>';
 
-    var platformNames = ['Instagram', 'Facebook', 'Meta (기타)', 'Google', 'Naver', 'GPT'];
-    var contentKeys = eligible.filter(function (key) { return platformNames.indexOf(key) !== -1; });
-    var contentKey = contentKeys.length ? contentKeys.reduce(function (best, key) {
-      return pct(groups[key].converted, groups[key].confirmed) > pct(groups[best].converted, groups[best].confirmed) ? key : best;
-    }, contentKeys[0]) : bestKey;
-    var action = contentKey ? '<div class="content-action-icon">↗</div><div><h4>' + escapeHtml(labelOf(contentKey)) + ' 유입과 유사한 콘텐츠를 우선 발행</h4><p>이 유입의 확정 전환율은 <b>' + pctText(pct(groups[contentKey].converted, groups[contentKey].confirmed)) + '</b>, 견적 도달률은 <b>' + pctText(pct(groups[contentKey].quoted, groups[contentKey].total)) + '</b>입니다. 성과가 난 주제·후킹 문구·형식을 반복하고 다음 기간에 전환율 변화를 비교하세요.</p></div>' : '<div class="content-action-icon">!</div><div><h4>콘텐츠 우선순위를 정할 표본이 부족합니다</h4><p>플랫폼별 확정 결과가 10건 이상 쌓이면 전환율이 높은 유입을 기준으로 발행 우선순위를 제안합니다.</p></div>';
-    document.getElementById('cmpContentAction').innerHTML = action;
+  }
+
+  function renderCmpPlatformPerformance(periodRows) {
+    var groups = {};
+    periodRows.forEach(function (r) {
+      var key = attributionPlatform(r);
+      if (!key) return;
+      if (!groups[key]) groups[key] = { total:0, converted:0, unqualified:0, quoted:0 };
+      var g = groups[key]; g.total++;
+      if (r[REQ_IDX.phase] === 'contracted') g.converted++;
+      if (r[REQ_IDX.phase] === 'unqualified') g.unqualified++;
+      if (r[REQ_IDX.quote]) g.quoted++;
+    });
+    var keys = Object.keys(groups).sort(function (a,b) { return groups[b].total - groups[a].total; });
+    if (!keys.length) { document.getElementById('cmpPlatformPerformance').innerHTML = '<div class="empty-state">식별 가능한 소재·플랫폼 데이터가 없습니다.</div>'; return; }
+    document.getElementById('cmpPlatformPerformance').innerHTML = keys.map(function (key) {
+      var g=groups[key], confirmed=g.converted+g.unqualified, rate=pct(g.converted,confirmed)||0, quote=pct(g.quoted,g.total)||0;
+      return '<article class="platform-card"><div class="platform-card-head"><b>' + escapeHtml(key) + '</b><span>전체 ' + g.total.toLocaleString() + '건 · 확정 ' + confirmed.toLocaleString() + '건</span></div>' +
+        '<div class="platform-metric"><span>확정 전환율</span><strong>' + rate.toFixed(1) + '%</strong></div><div class="platform-track"><div class="platform-fill" style="width:' + rate.toFixed(1) + '%"></div></div>' +
+        '<div class="platform-metric"><span>견적 도달률</span><b>' + quote.toFixed(1) + '%</b></div></article>';
+    }).join('');
   }
 
   function attributionPlatform(r) {
