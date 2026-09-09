@@ -850,7 +850,12 @@
           <div class="table-scroll"><table id="cmpIpTable"></table></div>
         </div>
       </div>
-      <div class="data-limit-note"><span class="metric-available">현재 가능:</span> 웹·전화·추천·카카오톡·이메일별 전환 비교 &nbsp;·&nbsp; <span class="metric-pending">추가 연동 필요:</span> Instagram/Facebook, 캠페인, 광고세트, 소재명·소재 주제. 이 값이 들어오면 같은 표가 플랫폼 → 캠페인 → 소재 순으로 확장됩니다.</div>
+      <div class="charts-2col" style="margin-top:22px;">
+        <div><div class="card-title-sub" style="margin-bottom:8px;">세부 플랫폼</div><div class="table-scroll"><table id="cmpPlatformTable"></table></div></div>
+        <div><div class="card-title-sub" style="margin-bottom:8px;">캠페인</div><div class="table-scroll"><table id="cmpCampaignTable"></table></div></div>
+      </div>
+      <div style="margin-top:22px;"><div class="card-title-sub" style="margin-bottom:8px;">소재</div><div class="table-scroll"><table id="cmpCreativeTable"></table></div></div>
+      <div id="cmpAttributionNote" class="data-limit-note"></div>
     </section>
 
     <div class="analysis-section-head">
@@ -959,7 +964,7 @@ function initDashboard() {
     return function (r) { var m = stageByCase[r[0]]; return m ? (m[code] || null) : null; };
   }
 
-  var REQ_IDX = { id: 0, inquiry: 1, category: 2, channel: 3, phase: 4, stage: 5, contact: 6, quote: 7, contract: 8, unqualifiedReason: 9 };
+  var REQ_IDX = { id: 0, inquiry: 1, category: 2, channel: 3, phase: 4, stage: 5, contact: 6, quote: 7, contract: 8, unqualifiedReason: 9, sourcePlatform: 10, sourceCampaign: 11, sourceCreative: 12 };
   var REASON_LABELS = {
     delayed_response: '연락 지연', other: '기타', trademark: '상표',
     no_response: '고객 무응답', cost: '가격', design: '디자인', '': '사유 미기록'
@@ -2350,6 +2355,7 @@ function initDashboard() {
     renderCmpStageJourney(periodRows, converted, unqualified);
     renderCmp2DistTable('cmpChannelTable', converted, unqualified, function (r) { return r[REQ_IDX.channel] || '(미기록)'; }, CHANNEL_LABELS_CMP);
     renderCmp2DistTable('cmpIpTable', converted, unqualified, function (r) { return r[REQ_IDX.category] || '(미기록)'; }, null);
+    renderCmpAttribution(converted, unqualified);
     renderCmpChannelQuality(periodRows);
     renderCmp2DistTable('cmpWeekdayTable', converted, unqualified, function (r) { return weekdayKR(r[REQ_IDX.inquiry]); }, null);
     renderCmp2DistTable('cmpHourTable', converted, unqualified, function (r) { return isBusinessHour(r[REQ_IDX.inquiry]) ? '업무시간 내(09~18시)' : '업무시간 외'; }, null);
@@ -2412,7 +2418,7 @@ function initDashboard() {
   function renderCmpChannelQuality(periodRows) {
     var groups = {};
     periodRows.forEach(function (r) {
-      var key = r[REQ_IDX.channel] || '(미기록)';
+      var key = attributionPlatform(r) || r[REQ_IDX.channel] || '(미기록)';
       if (!groups[key]) groups[key] = { total: 0, confirmed: 0, converted: 0, quoted: 0, contacted24: 0, contactKnown: 0 };
       var g = groups[key];
       g.total++;
@@ -2437,7 +2443,31 @@ function initDashboard() {
         '<td>' + confidence + '</td><td class="num font-mono">연동 전</td><td class="num font-mono">연동 전</td></tr>';
     }).join('');
     document.getElementById('cmpChannelQualityTable').innerHTML =
-      '<thead><tr><th>채널</th><th>리드</th><th>확정 전환율</th><th>견적 도달률</th><th>24시간 내 연락</th><th>신뢰도</th><th>CPL</th><th>CAC</th></tr></thead><tbody>' + body + '</tbody>';
+      '<thead><tr><th>채널/플랫폼</th><th>리드</th><th>확정 전환율</th><th>견적 도달률</th><th>24시간 내 연락</th><th>신뢰도</th><th>CPL</th><th>CAC</th></tr></thead><tbody>' + body + '</tbody>';
+  }
+
+  function attributionPlatform(r) {
+    var raw = String(r[REQ_IDX.sourcePlatform] || '').trim();
+    if (!raw) return '';
+    var low = raw.toLowerCase();
+    if (low.indexOf('instagram') !== -1 || low.indexOf('인스타') !== -1 || low === 'ig') return 'Instagram';
+    if (low.indexOf('facebook') !== -1 || low.indexOf('페이스북') !== -1 || low === 'fb') return 'Facebook';
+    if (low.indexOf('meta') !== -1 || low.indexOf('메타') !== -1) return 'Meta (기타)';
+    if (low.indexOf('google') !== -1 || low.indexOf('구글') !== -1) return 'Google';
+    if (low.indexOf('naver') !== -1 || low.indexOf('네이버') !== -1) return 'Naver';
+    if (low.indexOf('chatgpt') !== -1 || low.indexOf('openai') !== -1 || low === 'gpt') return 'GPT';
+    return raw;
+  }
+
+  function renderCmpAttribution(converted, unqualified) {
+    renderCmp2DistTable('cmpPlatformTable', converted.filter(function (r) { return !!attributionPlatform(r); }), unqualified.filter(function (r) { return !!attributionPlatform(r); }), attributionPlatform, null);
+    renderCmp2DistTable('cmpCampaignTable', converted.filter(function (r) { return !!r[REQ_IDX.sourceCampaign]; }), unqualified.filter(function (r) { return !!r[REQ_IDX.sourceCampaign]; }), function (r) { return r[REQ_IDX.sourceCampaign]; }, null);
+    renderCmp2DistTable('cmpCreativeTable', converted.filter(function (r) { return !!r[REQ_IDX.sourceCreative]; }), unqualified.filter(function (r) { return !!r[REQ_IDX.sourceCreative]; }), function (r) { return r[REQ_IDX.sourceCreative]; }, null);
+    var all = converted.concat(unqualified);
+    var platformN = all.filter(function (r) { return !!attributionPlatform(r); }).length;
+    var campaignN = all.filter(function (r) { return !!r[REQ_IDX.sourceCampaign]; }).length;
+    var creativeN = all.filter(function (r) { return !!r[REQ_IDX.sourceCreative]; }).length;
+    document.getElementById('cmpAttributionNote').innerHTML = '<span class="metric-available">상세 유입 식별:</span> 플랫폼 ' + platformN.toLocaleString() + '건 · 캠페인 ' + campaignN.toLocaleString() + '건 · 소재 ' + creativeN.toLocaleString() + '건. 값이 없는 웹 문의는 기존 웹 채널에 남겨두며 임의로 분류하지 않습니다.';
   }
 
   function weekdayKR(dateStr) {
@@ -2979,7 +3009,7 @@ function initDashboard() {
     });
   }
 
-  var FUNNEL_COLS = ['id', 'inquiry_at', 'category', 'channel', 'phase', 'stage', 'first_contact_at', 'first_quote_at', 'first_contract_at', 'unqualified_reason'];
+  var FUNNEL_COLS = ['id', 'inquiry_at', 'category', 'channel', 'phase', 'stage', 'first_contact_at', 'first_quote_at', 'first_contract_at', 'unqualified_reason', 'source_platform', 'source_campaign', 'source_creative'];
   var CASE_COLS = ['id', 'request_id', 'inquiry_at', 'first_contact_at', 'first_quote_at', 'contract_date', 'commission_date', 'filing_official_date', 'registration_official_date', 'ip_type', 'category', 'assignee_id'];
   var STAGE_COLS = ['case_id', 'stage', 'changed_at'];
 
