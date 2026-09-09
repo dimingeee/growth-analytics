@@ -383,7 +383,7 @@
   .diff-card-pair b { color: var(--ink); font-variant-numeric: tabular-nums; }
   .diff-card-gap { font-size: 15px; font-weight: 800; color: var(--brick); font-variant-numeric: tabular-nums; }
 
-  /* 전환 비교 확장: 단계 → 소재/유입 → 채널 품질 */
+  /* 전환 비교 확장: 단계 → 유입 플랫폼 → 채널 품질 */
   .analysis-section-head { margin: 26px 0 12px; }
   .analysis-section-head h3 { margin: 0 0 4px; font-size: 17px; color: var(--ink); }
   .analysis-section-head p { margin: 0; font-size: 12.5px; color: var(--ink-3); }
@@ -823,38 +823,14 @@
       <div class="table-scroll"><table id="cmpContactRateTable"></table></div>
     </section>
 
-    <section class="card">
-      <div class="card-head"><div><div class="card-title">전환 / 미전환의 가장 큰 차이</div></div></div>
-      <div id="cmpTopDiffGrid" class="action-grid"></div>
-    </section>
-
-    <section class="card" id="cmpQuoteSpeedCard">
-      <div class="card-head"><div><div class="card-title">견적 속도 비교</div><div class="card-title-sub">문의 → 첫 견적 평균 소요시간(일)</div></div></div>
-      <div id="cmpQuoteSpeedMetrics"></div>
-    </section>
-
     <div class="analysis-section-head">
-      <h3>2. 소재별 전환 파악</h3>
-      <p>현재 저장된 유입 채널 성과를 먼저 비교하고, 플랫폼·캠페인·소재는 데이터 연동 상태를 함께 표시합니다.</p>
+      <h3>2. 유입 플랫폼별 전환 파악</h3>
+      <p>Instagram·Facebook·Google·Naver·GPT처럼 실제 식별 가능한 플랫폼만 비교합니다.</p>
     </div>
 
     <section class="card">
-      <div class="card-head"><div><div class="card-title">유입 채널 · IP 유형 비교</div><div class="card-title-sub">원본 DB의 유입 상세값을 플랫폼·캠페인·소재로 자동 분류</div></div></div>
-      <div class="charts-2col">
-        <div>
-          <div class="card-title-sub" style="margin-bottom:8px;">유입 채널</div>
-          <div class="table-scroll"><table id="cmpChannelTable"></table></div>
-        </div>
-        <div>
-          <div class="card-title-sub" style="margin-bottom:8px;">IP 유형</div>
-          <div class="table-scroll"><table id="cmpIpTable"></table></div>
-        </div>
-      </div>
-      <div class="charts-2col" style="margin-top:22px;">
-        <div><div class="card-title-sub" style="margin-bottom:8px;">세부 플랫폼</div><div class="table-scroll"><table id="cmpPlatformTable"></table></div></div>
-        <div><div class="card-title-sub" style="margin-bottom:8px;">캠페인</div><div class="table-scroll"><table id="cmpCampaignTable"></table></div></div>
-      </div>
-      <div style="margin-top:22px;"><div class="card-title-sub" style="margin-bottom:8px;">소재</div><div class="table-scroll"><table id="cmpCreativeTable"></table></div></div>
+      <div class="card-head"><div><div class="card-title">플랫폼별 계약 전환율</div><div class="card-title-sub">플랫폼으로 확인되지 않는 광고명·코드값은 제외</div></div></div>
+      <div class="table-scroll"><table id="cmpPlatformTable"></table></div>
       <div id="cmpAttributionNote" class="data-limit-note"></div>
     </section>
 
@@ -867,6 +843,13 @@
       <div class="card-head"><div><div class="card-title">채널별 리드 품질</div><div class="card-title-sub">구매의사 대체지표: 첫 견적 기록 보유 여부</div></div></div>
       <div class="table-scroll"><table id="cmpChannelQualityTable"></table></div>
       <div class="quality-legend">전환율은 계약·미전환으로 결과가 확정된 리드만 분모로 사용합니다. 구매의사 필드가 아직 없어 견적 도달률을 임시 대체지표로 표시합니다. CTR·CPM·CPL·CAC는 광고비·노출·클릭 데이터 연동 후 계산합니다.</div>
+    </section>
+
+    <div class="section-divider">기타 참고 분석 <span class="badge-fixed">핵심 3개 분석 외</span></div>
+
+    <section class="card">
+      <div class="card-head"><div><div class="card-title">IP 유형별 전환 비교</div></div></div>
+      <div class="table-scroll"><table id="cmpIpTable"></table></div>
     </section>
 
     <section class="card">
@@ -964,7 +947,7 @@ function initDashboard() {
     return function (r) { var m = stageByCase[r[0]]; return m ? (m[code] || null) : null; };
   }
 
-  var REQ_IDX = { id: 0, inquiry: 1, category: 2, channel: 3, phase: 4, stage: 5, contact: 6, quote: 7, contract: 8, unqualifiedReason: 9, sourcePlatform: 10, sourceCampaign: 11, sourceCreative: 12 };
+  var REQ_IDX = { id: 0, inquiry: 1, category: 2, channel: 3, phase: 4, stage: 5, contact: 6, quote: 7, contract: 8, unqualifiedReason: 9, sourcePlatform: 10 };
   var REASON_LABELS = {
     delayed_response: '연락 지연', other: '기타', trademark: '상표',
     no_response: '고객 무응답', cost: '가격', design: '디자인', '': '사유 미기록'
@@ -2353,14 +2336,11 @@ function initDashboard() {
     renderCmpContactSpeed(converted, unqualified);
     renderCmpContactRateTable(periodRows);
     renderCmpStageJourney(periodRows, converted, unqualified);
-    renderCmp2DistTable('cmpChannelTable', converted, unqualified, function (r) { return r[REQ_IDX.channel] || '(미기록)'; }, CHANNEL_LABELS_CMP);
     renderCmp2DistTable('cmpIpTable', converted, unqualified, function (r) { return r[REQ_IDX.category] || '(미기록)'; }, null);
     renderCmpAttribution(converted, unqualified);
     renderCmpChannelQuality(periodRows);
     renderCmp2DistTable('cmpWeekdayTable', converted, unqualified, function (r) { return weekdayKR(r[REQ_IDX.inquiry]); }, null);
     renderCmp2DistTable('cmpHourTable', converted, unqualified, function (r) { return isBusinessHour(r[REQ_IDX.inquiry]) ? '업무시간 내(09~18시)' : '업무시간 외'; }, null);
-    renderCmpQuoteSpeed(converted, unqualified);
-    renderCmpTopDiff(converted, unqualified);
   }
 
   var CHANNEL_LABELS_CMP = { web: '웹', phone: '전화', referral: '추천', kakao: '카카오톡', email: '이메일', additional_retainer: '추가 위임', '(미기록)': '(미기록)' };
@@ -2368,8 +2348,13 @@ function initDashboard() {
   function pct(n, d) { return d ? n / d * 100 : null; }
   function pctText(v) { return v == null ? '—' : v.toFixed(1) + '%'; }
 
-  function milestoneReach(rows, idx) {
-    return rows.filter(function (r) { return !!r[idx]; }).length;
+  function milestoneReached(r, step) {
+    if (step.key === 'contract') return r[REQ_IDX.phase] === 'contracted' || !!r[REQ_IDX.contract];
+    return !!r[step.idx];
+  }
+
+  function milestoneReach(rows, step) {
+    return rows.filter(function (r) { return milestoneReached(r, step); }).length;
   }
 
   function milestoneMedianDays(rows, idx) {
@@ -2383,35 +2368,35 @@ function initDashboard() {
 
   function renderCmpStageJourney(periodRows, converted, unqualified) {
     var steps = [
-      { label: '문의 접수', idx: REQ_IDX.inquiry },
-      { label: '첫 연락', idx: REQ_IDX.contact },
-      { label: '첫 견적', idx: REQ_IDX.quote },
-      { label: '계약', idx: REQ_IDX.contract }
+      { key: 'inquiry', label: '문의 접수', idx: REQ_IDX.inquiry },
+      { key: 'contact', label: '첫 연락', idx: REQ_IDX.contact },
+      { key: 'quote', label: '첫 견적', idx: REQ_IDX.quote },
+      { key: 'contract', label: '계약', idx: REQ_IDX.contract }
     ];
     var rowsHtml = steps.map(function (s, i) {
-      var reached = milestoneReach(periodRows, s.idx);
-      var previousRecorded = i === 0 ? periodRows.length : milestoneReach(periodRows, steps[i - 1].idx);
-      var sequentialReached = i === 0 ? periodRows.length : periodRows.filter(function (r) { return !!r[steps[i - 1].idx] && !!r[s.idx]; }).length;
+      var reached = milestoneReach(periodRows, s);
+      var previousRecorded = i === 0 ? periodRows.length : milestoneReach(periodRows, steps[i - 1]);
+      var sequentialReached = i === 0 ? periodRows.length : periodRows.filter(function (r) { return milestoneReached(r, steps[i - 1]) && milestoneReached(r, s); }).length;
       var sequential = pct(sequentialReached, previousRecorded);
-      var cReach = milestoneReach(converted, s.idx);
-      var uReach = milestoneReach(unqualified, s.idx);
-      var med = milestoneMedianDays(periodRows, s.idx);
+      var cReach = milestoneReach(converted, s);
+      var uReach = milestoneReach(unqualified, s);
+      var cMed = milestoneMedianDays(converted, s.idx);
+      var uMed = milestoneMedianDays(unqualified, s.idx);
       return '<tr><td>' + s.label + '</td>' +
         '<td class="num font-mono">' + reached.toLocaleString() + '건</td>' +
         '<td class="num font-mono">' + pctText(pct(reached, periodRows.length)) + '</td>' +
         '<td class="num font-mono">' + pctText(sequential) + '</td>' +
-        '<td class="num font-mono">' + pctText(pct(cReach, converted.length)) + '</td>' +
-        '<td class="num font-mono">' + pctText(pct(uReach, unqualified.length)) + '</td>' +
-        '<td class="num font-mono">' + (med == null ? '—' : med.toFixed(1) + '일') + '</td></tr>';
+        '<td class="num font-mono">' + pctText(pct(cReach, converted.length)) + (cMed == null ? '' : ' · ' + cMed.toFixed(1) + '일') + '</td>' +
+        '<td class="num font-mono">' + pctText(pct(uReach, unqualified.length)) + (uMed == null ? '' : ' · ' + uMed.toFixed(1) + '일') + '</td></tr>';
     }).join('');
     document.getElementById('cmpStageJourneyTable').innerHTML =
-      '<thead><tr><th>단계</th><th>도달</th><th>전체 도달률</th><th>직전 기록 대비</th><th>계약군</th><th>미전환군</th><th>접수→도달 중앙값</th></tr></thead><tbody>' + rowsHtml + '</tbody>';
+      '<thead><tr><th>단계</th><th>도달</th><th>전체 도달률</th><th>직전 기록 대비</th><th>계약군 도달률·중앙값</th><th>미전환군 도달률·중앙값</th></tr></thead><tbody>' + rowsHtml + '</tbody>';
 
     var active = periodRows.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; });
     var newCount = active.filter(function (r) { return r[REQ_IDX.stage] === 'new'; }).length;
     var docsCount = active.filter(function (r) { return r[REQ_IDX.stage] === 'waiting_for_docs'; }).length;
     document.getElementById('cmpRequestStageSnapshot').innerHTML =
-      '<b>신규 → 자료 전달 분석 상태:</b> 현재 진행 중 스냅샷은 신규 접수 <b>' + newCount.toLocaleString() + '건</b>, 자료 대기 <b>' + docsCount.toLocaleString() + '건</b>입니다. ' +
+      '<b>계약 기준:</b> 계약군은 <code class="k">phase=contracted</code>이므로 계약 도달률은 100%로 표시합니다. 계약일 중앙값은 실제 계약일 기록이 있는 건만 계산합니다.<br><b>신규 → 자료 전달 분석 상태:</b> 현재 진행 중 스냅샷은 신규 접수 <b>' + newCount.toLocaleString() + '건</b>, 자료 대기 <b>' + docsCount.toLocaleString() + '건</b>입니다. ' +
       '다만 Request 단계 변경일이 저장되지 않아 이 두 수를 전환율이나 체류기간으로 해석할 수 없습니다. <code class="k">request_stage_histories</code> 연동 후 정확한 신규→자료 전달 전환율과 단계 체류기간으로 교체해야 합니다.';
   }
 
@@ -2456,18 +2441,14 @@ function initDashboard() {
     if (low.indexOf('google') !== -1 || low.indexOf('구글') !== -1) return 'Google';
     if (low.indexOf('naver') !== -1 || low.indexOf('네이버') !== -1) return 'Naver';
     if (low.indexOf('chatgpt') !== -1 || low.indexOf('openai') !== -1 || low === 'gpt') return 'GPT';
-    return raw;
+    return '';
   }
 
   function renderCmpAttribution(converted, unqualified) {
     renderCmp2DistTable('cmpPlatformTable', converted.filter(function (r) { return !!attributionPlatform(r); }), unqualified.filter(function (r) { return !!attributionPlatform(r); }), attributionPlatform, null);
-    renderCmp2DistTable('cmpCampaignTable', converted.filter(function (r) { return !!r[REQ_IDX.sourceCampaign]; }), unqualified.filter(function (r) { return !!r[REQ_IDX.sourceCampaign]; }), function (r) { return r[REQ_IDX.sourceCampaign]; }, null);
-    renderCmp2DistTable('cmpCreativeTable', converted.filter(function (r) { return !!r[REQ_IDX.sourceCreative]; }), unqualified.filter(function (r) { return !!r[REQ_IDX.sourceCreative]; }), function (r) { return r[REQ_IDX.sourceCreative]; }, null);
     var all = converted.concat(unqualified);
     var platformN = all.filter(function (r) { return !!attributionPlatform(r); }).length;
-    var campaignN = all.filter(function (r) { return !!r[REQ_IDX.sourceCampaign]; }).length;
-    var creativeN = all.filter(function (r) { return !!r[REQ_IDX.sourceCreative]; }).length;
-    document.getElementById('cmpAttributionNote').innerHTML = '<span class="metric-available">상세 유입 식별:</span> 플랫폼 ' + platformN.toLocaleString() + '건 · 캠페인 ' + campaignN.toLocaleString() + '건 · 소재 ' + creativeN.toLocaleString() + '건. 값이 없는 웹 문의는 기존 웹 채널에 남겨두며 임의로 분류하지 않습니다.';
+    document.getElementById('cmpAttributionNote').innerHTML = '<span class="metric-available">플랫폼 식별:</span> ' + platformN.toLocaleString() + '건. 플랫폼으로 명확히 확인되는 값만 집계하고 광고명·세트명·코드값은 제외했습니다.';
   }
 
   function weekdayKR(dateStr) {
@@ -3009,7 +2990,7 @@ function initDashboard() {
     });
   }
 
-  var FUNNEL_COLS = ['id', 'inquiry_at', 'category', 'channel', 'phase', 'stage', 'first_contact_at', 'first_quote_at', 'first_contract_at', 'unqualified_reason', 'source_platform', 'source_campaign', 'source_creative'];
+  var FUNNEL_COLS = ['id', 'inquiry_at', 'category', 'channel', 'phase', 'stage', 'first_contact_at', 'first_quote_at', 'first_contract_at', 'unqualified_reason', 'source_platform'];
   var CASE_COLS = ['id', 'request_id', 'inquiry_at', 'first_contact_at', 'first_quote_at', 'contract_date', 'commission_date', 'filing_official_date', 'registration_official_date', 'ip_type', 'category', 'assignee_id'];
   var STAGE_COLS = ['case_id', 'stage', 'changed_at'];
 
