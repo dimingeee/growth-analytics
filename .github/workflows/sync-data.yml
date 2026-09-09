@@ -1,6 +1,12 @@
 name: Sync Bassip data (Neon -> Supabase)
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'sync/**'
+      - 'supabase/schema.sql'
+      - '.github/workflows/sync-data.yml'
   schedule:
     # 매일 08:00 KST = 전날 23:00 UTC
     - cron: '0 23 * * *'
