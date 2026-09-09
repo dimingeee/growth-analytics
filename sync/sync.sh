@@ -8,21 +8,6 @@ set -euo pipefail
 
 QFILE="$(cd "$(dirname "$0")" && pwd)/neon_export.sql"
 
-# 스키마 진단: 문의 단계 변경 이력 및 유입경로 관련 테이블/컬럼 존재 여부만 출력한다.
-psql "$NEON_DATABASE_URL" -t -A -F '|' -c "
-select table_name, column_name
-from information_schema.columns
-where table_schema = 'public'
-  and (
-    table_name ilike '%request%histor%'
-    or table_name ilike '%stage%histor%'
-    or column_name ilike '%stage%changed%'
-    or column_name ilike '%inbound%'
-    or column_name ilike '%utm%'
-    or column_name ilike '%platform%'
-  )
-order by table_name, ordinal_position;"
-
 # 기존 Supabase 프로젝트를 별도 수동 마이그레이션 없이 확장한다.
 psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
 alter table funnel_rows add column if not exists source_platform text;
