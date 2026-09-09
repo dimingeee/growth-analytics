@@ -59,4 +59,6 @@ sync_table "case_stage_events" "case_stage_events" \
   "case_id, stage, changed_at" \
   "case_id text, stage text, changed_at timestamptz"
 
+psql "$SUPABASE_DB_URL" -t -A -c "select '유입상세 집계: platform=' || count(source_platform) || ', campaign=' || count(source_campaign) || ', creative=' || count(source_creative) from funnel_rows;"
+
 echo "모든 테이블 동기화 완료."
