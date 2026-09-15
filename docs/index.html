@@ -867,28 +867,23 @@
 
     <div class="analysis-section-head">
       <h3>1. 단계별 전환 파악</h3>
-      <p>문의 접수 → 첫 연락 → 첫 견적 → 계약에서 두 그룹이 어디서 갈리는지 확인합니다.</p>
+      <p><b>왜 문의접수/첫연락/첫견적/계약, 이 4개뿐인가:</b> Bassip 원본 DB에 실제로 시각이 찍혀 있는 지점이 이 4개뿐입니다. "취부콜 필요"·"자료 수신 대기" 같은 칸반 세부 단계는 지금 값(스냅샷)만 있고 "언제 들어왔는지" 이력이 없어서, 그 단계에서 며칠 머물다 전환/미전환됐는지는 계산할 방법이 없습니다(세션 내내 여러 방식으로 확인함). 대신 아래 표는 실제로 있는 3개 구간(접수→연락, 연락→견적, 견적→계약)에서 <b>얼마나 걸렸는지에 따라 최종 계약률이 어떻게 달라지는지</b>를 보여줍니다 — 어떤 단계에서 시간을 끌면 위험한지 여기서 바로 보입니다.</p>
     </div>
 
     <section class="card">
-      <div class="card-head"><div><div class="card-title">계약군 vs 미전환군 단계 비교</div><div class="card-title-sub">큰 숫자: 단계 도달률 · 작은 숫자: 문의 접수 후 해당 단계까지 중앙 소요일 (실제 이력 기록 4개 지점만 — 문의접수/첫연락/첫견적/계약)</div></div></div>
+      <div class="card-head"><div><div class="card-title">구간별 소요시간에 따른 최종 계약률</div><div class="card-title-sub">각 칸 = 그 구간을 그 시간대 안에 넘어간 건들의 최종 계약률 · 괄호는 표본 건수 · 표본 10건 미만은 생략</div></div></div>
+      <div class="table-scroll"><table id="cmpStageSpeedMatrix"></table></div>
+      <div class="mini-note" id="cmpStageSpeedInsight" style="margin-top:12px;"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><div><div class="card-title">계약군 vs 미전환군 단계 비교</div><div class="card-title-sub">큰 숫자: 단계 도달률 · 작은 숫자: 문의 접수 후 해당 단계까지 중앙 소요일</div></div></div>
       <div id="cmpStageJourneyTable"></div>
     </section>
 
     <section class="card">
-      <div class="card-head"><div><div class="card-title">초기 단계(칸반)별 현재 체류 현황</div><div class="card-title-sub">지금 이 순간 각 단계에 있는 문의 건수와 체류일 — 위 카드와 같은 기간 필터 적용</div></div></div>
-      <div id="cmpKanbanStageTable"></div>
-      <div id="cmpRequestStageSnapshot" class="data-limit-note"></div>
-    </section>
-
-    <section class="card">
-      <div class="card-head"><div><div class="card-title">첫 연락이 늦으면 계약률이 떨어지나?</div><div class="card-title-sub">첫 연락 속도 비교</div></div></div>
+      <div class="card-head"><div><div class="card-title">첫 연락이 늦으면 계약률이 떨어지나?</div><div class="card-title-sub">첫 연락 속도 비교(시간 단위 세분화)</div></div></div>
       <div id="cmpContactSpeedMetrics"></div>
-    </section>
-
-    <section class="card">
-      <div class="card-head"><div><div class="card-title">첫 연락 시간대별 실제 전환율</div></div></div>
-      <div class="table-scroll"><table id="cmpContactRateTable"></table></div>
     </section>
 
     <div class="analysis-section-head">
@@ -2522,9 +2517,8 @@ function initDashboard() {
       document.getElementById('cmpReasonInsight').innerHTML = '';
     }
     renderCmpContactSpeed(converted, unqualified);
-    renderCmpContactRateTable(periodRows);
+    renderCmpStageSpeedMatrix(periodRows);
     renderCmpStageJourney(periodRows, converted, unqualified);
-    renderCmpKanbanStage(periodRows);
     renderCmp2DistTable('cmpIpTable', converted, unqualified, function (r) { return r[REQ_IDX.category] || '(미기록)'; }, null);
     renderCmpPlatformPerformance(periodRows);
     renderCmpCreativePerformance(periodRows);
@@ -2580,22 +2574,67 @@ function initDashboard() {
     document.getElementById('cmpStageJourneyTable').innerHTML = '<div class="stage-journey">' + rowsHtml + '</div>';
   }
 
-  // Bassip 앱 칸반 보드(New→...→검토 완료)와 같은 단계로 "지금 이 순간 어디에 얼마나 머물러
-  // 있는지"를 보여준다. request엔 case_stage_histories 같은 단계 이력이 없어(위 renderCmpStageJourney의
-  // 4개 실이력 지점과 달리) 도달률·소요일 계산은 못하고, stage_updated_at 기반 근사 체류일만 가능하다.
-  function renderCmpKanbanStage(periodRows) {
-    var now = new Date();
-    var active = periodRows.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; });
-    var rowsHtml = KANBAN_STAGE_KEYS.map(function (st) {
-      var rows = active.filter(function (r) { return r[REQ_IDX.stage] === st; });
-      var elapsed = rows.map(function (r) { return stageAgeDays(r, now); }).filter(function (v) { return v != null; });
-      var med = medianOf(elapsed);
-      return '<article class="stage-card"><div class="stage-card-head"><b>' + (STAGE_LABELS_REQ[st] || st) + '</b><span>' + rows.length.toLocaleString() + '건</span></div>' +
-        '<div class="stage-group"><div class="stage-big">' + rows.length.toLocaleString() + '건</div><div class="stage-days">' + (med != null ? '현재 단계 중앙값 ' + med.toFixed(1) + '일째' : '데이터 없음') + '</div></div></article>';
-    }).join('');
-    document.getElementById('cmpKanbanStageTable').innerHTML = '<div class="stage-journey">' + rowsHtml + '</div>';
-    document.getElementById('cmpRequestStageSnapshot').innerHTML =
-      'request(문의)엔 case처럼 단계별 진입 시각 이력이 없어(사건 단계용 <code class="k">case_stage_histories</code>만 존재), "현재 단계 며칠째"는 레코드 마지막 수정 시각(<code class="k">stage_updated_at</code>) 기준 근사치입니다 — "진행 상황" 탭과 같은 계산 방식이며, 위 카드처럼 "며칠 만에 이 단계에 도달했는지"는 계산할 수 없습니다.';
+  var STAGE_SPEED_BUCKETS = [
+    { key: 'd0', label: '당일(24h)', max: 1 },
+    { key: 'd1', label: '1~3일', max: 3 },
+    { key: 'd2', label: '3~7일', max: 7 },
+    { key: 'd3', label: '7~14일', max: 14 },
+    { key: 'd4', label: '14일 초과', max: Infinity }
+  ];
+  function stageSpeedBucketOf(d) {
+    for (var i = 0; i < STAGE_SPEED_BUCKETS.length; i++) if (d <= STAGE_SPEED_BUCKETS[i].max) return STAGE_SPEED_BUCKETS[i].key;
+    return STAGE_SPEED_BUCKETS[STAGE_SPEED_BUCKETS.length - 1].key;
+  }
+  // "이 구간을 며칠 만에 넘어갔는가"에 따라 최종 계약률이 달라지는지 본다 — 실제 시각이 있는
+  // 3개 구간(접수→연락, 연락→견적, 견적→계약)만 쓴다. 분모는 결과가 확정된(계약/미전환) 건만
+  // (진행 중은 최종 결과를 모르므로 제외) — 다른 결과-확정 집계 카드들과 같은 규칙.
+  function renderCmpStageSpeedMatrix(periodRows) {
+    var transitions = [
+      { label: '문의 접수 → 첫 연락', fromIdx: REQ_IDX.inquiry, toIdx: REQ_IDX.contact },
+      { label: '첫 연락 → 첫 견적', fromIdx: REQ_IDX.contact, toIdx: REQ_IDX.quote },
+      { label: '첫 견적 → 계약', fromIdx: REQ_IDX.quote, toIdx: REQ_IDX.contract }
+    ];
+    var MIN_N = 10;
+    var rowsData = transitions.map(function (t) {
+      var cells = {};
+      STAGE_SPEED_BUCKETS.forEach(function (b) { cells[b.key] = { n: 0, c: 0 }; });
+      periodRows.forEach(function (r) {
+        var phase = r[REQ_IDX.phase];
+        if (phase !== 'contracted' && phase !== 'unqualified') return;
+        var a = parseISO(r[t.fromIdx]), b = parseISO(r[t.toIdx]);
+        if (!a || !b) return;
+        var d = daysBetween(a, b);
+        if (d < 0) return;
+        var cell = cells[stageSpeedBucketOf(d)];
+        cell.n++;
+        if (phase === 'contracted') cell.c++;
+      });
+      return { label: t.label, cells: cells };
+    });
+
+    var thead = '<thead><tr><th>구간</th>' + STAGE_SPEED_BUCKETS.map(function (b) { return '<th>' + b.label + '</th>'; }).join('') + '</tr></thead>';
+    var tbody = '<tbody>' + rowsData.map(function (row) {
+      var tds = STAGE_SPEED_BUCKETS.map(function (b) {
+        var cell = row.cells[b.key];
+        if (cell.n < MIN_N) return '<td class="num font-mono">—</td>';
+        var rate = cell.c / cell.n * 100;
+        return '<td>' + rateCellHtml(rate, 100) + '<small>' + cell.n.toLocaleString() + '건</small></td>';
+      }).join('');
+      return '<tr><td>' + row.label + '</td>' + tds + '</tr>';
+    }).join('') + '</tbody>';
+    document.getElementById('cmpStageSpeedMatrix').innerHTML = thead + tbody;
+
+    // 유효 칸(n>=MIN_N) 중 최고-최저 전환율 격차가 가장 큰 행을 자동으로 짚어준다.
+    var best = null;
+    rowsData.forEach(function (row) {
+      var rates = STAGE_SPEED_BUCKETS.map(function (b) { return row.cells[b.key]; }).filter(function (c) { return c.n >= MIN_N; }).map(function (c) { return c.c / c.n * 100; });
+      if (rates.length < 2) return;
+      var spread = Math.max.apply(null, rates) - Math.min.apply(null, rates);
+      if (!best || spread > best.spread) best = { label: row.label, spread: spread };
+    });
+    document.getElementById('cmpStageSpeedInsight').textContent = best
+      ? '\'' + best.label + '\' 구간은 걸린 시간에 따라 계약률이 최대 ' + best.spread.toFixed(0) + '%p까지 벌어집니다 — 표에서 어느 시간대가 위험한지 확인하세요.'
+      : '표본이 부족해 구간별 차이를 판단하기 어렵습니다.';
   }
 
   function renderCmpChannelQuality(periodRows) {
@@ -2798,40 +2837,6 @@ function initDashboard() {
       { tag: '계약', val: c.avgQuoteDays, cls: 'good' },
       { tag: '미전환', val: u.avgQuoteDays, cls: 'bad' }
     ], dayFmt);
-  }
-
-  function renderCmpContactRateTable(periodRows) {
-    function groupOf(bucketKey) {
-      var g = { total: 0, contracted: 0, unqualified: 0, inProgress: 0 };
-      periodRows.forEach(function (r) {
-        var i = parseISO(r[REQ_IDX.inquiry]), c = parseISO(r[REQ_IDX.contact]);
-        var key;
-        if (!c) key = 'nocontact';
-        else {
-          var h = (c.getTime() - i.getTime()) / 3600000;
-          if (h < 0) return;
-          key = contactBucketFor(h).key;
-        }
-        if (key !== bucketKey) return;
-        g.total++;
-        if (r[REQ_IDX.phase] === 'contracted') g.contracted++;
-        else if (r[REQ_IDX.phase] === 'unqualified') g.unqualified++;
-        else g.inProgress++;
-      });
-      return g;
-    }
-    var groups = CONTACT_SPEED_BUCKETS.map(function (b) { return { label: b.label, g: groupOf(b.key) }; });
-    var gNo = groupOf('nocontact');
-    groups.push({ label: '연락 기록 없음', g: gNo, flag: true });
-    var rates = groups.map(function (row) { return (row.g.contracted + row.g.unqualified) ? row.g.contracted / (row.g.contracted + row.g.unqualified) * 100 : 0; });
-    var maxRate = Math.max.apply(null, rates.concat([1]));
-
-    var thead = '<thead><tr><th>첫 연락 시간</th><th>전체 문의</th><th>계약</th><th>미전환</th><th>진행 중</th><th>계약전환율</th></tr></thead>';
-    var tbody = '<tbody>' + groups.map(function (row, i) {
-      var g = row.g;
-      return '<tr' + (row.flag ? ' class="flag"' : '') + '><td>' + row.label + '</td><td class="num font-mono">' + g.total.toLocaleString() + '</td><td class="num font-mono">' + g.contracted.toLocaleString() + '</td><td class="num font-mono">' + g.unqualified.toLocaleString() + '</td><td class="num font-mono">' + g.inProgress.toLocaleString() + '</td><td>' + rateCellHtml(rates[i], maxRate) + '</td></tr>';
-    }).join('') + '</tbody>';
-    document.getElementById('cmpContactRateTable').innerHTML = thead + tbody;
   }
 
   function rateCellHtml(rate, maxRate) {
