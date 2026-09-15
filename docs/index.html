@@ -671,6 +671,20 @@
       </section>
     </section>
 
+    <div class="section-divider">주간 보고서</div>
+    <section class="card">
+      <div class="card-head">
+        <div><div class="card-title" id="weeklyReportLabel"></div><div class="card-title-sub">월요일~일요일 기준</div></div>
+        <div class="seg">
+          <button type="button" id="weeklyPrevBtn">← 이전 주</button>
+          <button type="button" id="weeklyThisBtn">이번 주</button>
+          <button type="button" id="weeklyNextBtn">다음 주 →</button>
+        </div>
+      </div>
+      <section class="kpi-grid" id="weeklyKpiGrid"></section>
+      <p class="mini-note" id="weeklyReportNote" style="margin-top:12px;"></p>
+    </section>
+
   </div>
 
   <div id="viewProgress" style="display:none;">
@@ -879,6 +893,11 @@
       <div id="cmpPlatformPerformance" class="platform-performance"></div>
     </section>
 
+    <section class="card">
+      <div class="card-head"><div><div class="card-title">광고 소재(캠페인/카피)별 전환 성과</div><div class="card-title-sub">utm_term(없으면 utm_content) 기준 · 확정 10건 이상 소재만 표시</div></div></div>
+      <div class="table-scroll"><table id="cmpCreativeTable"></table></div>
+    </section>
+
     <div class="analysis-section-head">
       <h3>3. 채널별 리드 Quality 파악</h3>
       <p>전환율·견적 도달률·초기 연락 속도로 유입 리드의 질을 비교합니다.</p>
@@ -993,7 +1012,7 @@ function initDashboard() {
     return function (r) { var m = stageByCase[r[0]]; return m ? (m[code] || null) : null; };
   }
 
-  var REQ_IDX = { id: 0, inquiry: 1, category: 2, channel: 3, phase: 4, stage: 5, stageUpdatedAt: 6, contact: 7, quote: 8, contract: 9, unqualifiedReason: 10, sourcePlatform: 11 };
+  var REQ_IDX = { id: 0, inquiry: 1, category: 2, channel: 3, phase: 4, stage: 5, stageUpdatedAt: 6, contact: 7, quote: 8, contract: 9, unqualifiedReason: 10, sourcePlatform: 11, companyId: 12, sourceMedium: 13, sourceCreative: 14 };
   var REASON_LABELS = {
     delayed_response: '연락 지연', other: '기타', trademark: '상표',
     no_response: '고객 무응답', cost: '가격', design: '디자인', '': '사유 미기록'
@@ -1092,7 +1111,7 @@ function initDashboard() {
     { key: 'b4', label: '14일+', max: Infinity }
   ];
 
-  var state = { section: 'dashboard', page: 'all', ds: 'request', preset: 'all', customStart: null, customEnd: null, startKey: 'inquiry', endKey: 'contract', gran: 'auto', assignee: null, progressPreset: '3m' };
+  var state = { section: 'dashboard', page: 'all', ds: 'request', preset: 'all', customStart: null, customEnd: null, startKey: 'inquiry', endKey: 'contract', gran: 'auto', assignee: null, progressPreset: '3m', weeklyOffset: 0 };
 
   function parseISO(s) { return s ? new Date(s) : null; }
   function fmtDate(d) { return d.toISOString().slice(0, 10); }
@@ -1807,6 +1826,57 @@ function initDashboard() {
     renderContactSpeedMini(last3Rows);
     renderTimeToContractMini(last3Rows);
     renderUnqualTop3(last3Rows);
+    renderWeeklyReport();
+  }
+
+  // 주간 보고서 — 월요일 0시(UTC) 기준 월~일 한 주. offset=0이 이번 주, -1이 지난주.
+  // "진행 중" 한 항목만 예외적으로 그 주 시점이 아니라 현재 스냅샷이다(과거 시점의 진행 중 건수는
+  // phase 히스토리가 없어 재구성할 수 없음 — renderStatusBlock 등과 같은 제약).
+  function weekMonday(base, offset) {
+    var d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate()));
+    var dow = d.getUTCDay() || 7; // 월=1 ... 일=7
+    d.setUTCDate(d.getUTCDate() - (dow - 1) + offset * 7);
+    return d;
+  }
+  function renderWeeklyReport() {
+    var now = new Date();
+    var monday = weekMonday(now, state.weeklyOffset);
+    var sundayEnd = new Date(monday.getTime() + 7 * 86400000 - 1);
+    var weekNum = Math.ceil(monday.getUTCDate() / 7);
+    var mm = function (d) { return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
+    document.getElementById('weeklyReportLabel').textContent =
+      (monday.getUTCMonth() + 1) + '월 ' + weekNum + '주차 (' + mm(monday) + '~' + mm(sundayEnd) + ')' + (state.weeklyOffset === 0 ? ' · 이번 주' : '');
+    document.getElementById('weeklyThisBtn').disabled = state.weeklyOffset === 0;
+
+    function inWeek(dateStr) {
+      var d = parseISO(dateStr);
+      return d && d.getTime() >= monday.getTime() && d.getTime() <= sundayEnd.getTime();
+    }
+    var inquiryCount = REQ.filter(function (r) { return inWeek(r[REQ_IDX.inquiry]); }).length;
+    var contractCount = CASES.filter(function (c) { return inWeek(c[CASE_IDX.commission] || c[CASE_IDX.contractDate]); }).length;
+    var inProgressCount = REQ.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; }).length;
+    function stageEventCount(stageCode) {
+      return STAGE_EVENTS.filter(function (e) { return e[1] === stageCode && inWeek(e[2]); }).length;
+    }
+    var draftCount = stageEventCount('draft_delivered');
+    var revisionCount = stageEventCount('revision_delivered');
+    var filingCount = CASES.filter(function (c) { return inWeek(c[CASE_IDX.filingOfficial]); }).length;
+    var registrationCount = CASES.filter(function (c) { return inWeek(c[CASE_IDX.registrationOfficial]); }).length;
+
+    var items = [
+      { label: '문의', value: inquiryCount },
+      { label: '계약(수임)', value: contractCount },
+      { label: '진행 중', value: inProgressCount, note: '현재 기준' },
+      { label: '초안 송부', value: draftCount },
+      { label: '수정안 전달 완료', value: revisionCount },
+      { label: '출원', value: filingCount },
+      { label: '등록', value: registrationCount }
+    ];
+    document.getElementById('weeklyKpiGrid').innerHTML = items.map(function (it) {
+      return '<div class="kpi"><div class="kpi-label">' + it.label + '</div><div class="kpi-value font-mono">' + it.value.toLocaleString() + '건</div>' + (it.note ? '<div class="kpi-sub">' + it.note + '</div>' : '') + '</div>';
+    }).join('');
+    document.getElementById('weeklyReportNote').textContent =
+      '문의=접수일, 계약(수임)=수임일(없으면 계약체결일), 초안 송부/수정안 전달 완료=사건 단계 이력(case_stage_histories) 최초 도달일, 출원/등록=공식 기록일(cases.filing_date/registration_date) 기준. "진행 중"만 예외로 과거 주에도 항상 현재 시점 스냅샷입니다.';
   }
 
   // 최근 3개월 신규 문의 중 결과가 확정된 것(전환/미전환)만으로 전환율을 본다 —
@@ -2404,6 +2474,7 @@ function initDashboard() {
     renderCmpStageJourney(periodRows, converted, unqualified);
     renderCmp2DistTable('cmpIpTable', converted, unqualified, function (r) { return r[REQ_IDX.category] || '(미기록)'; }, null);
     renderCmpPlatformPerformance(periodRows);
+    renderCmpCreativePerformance(periodRows);
     renderCmpChannelQuality(periodRows);
     renderCmp2DistTable('cmpWeekdayTable', converted, unqualified, function (r) { return weekdayKR(r[REQ_IDX.inquiry]); }, null);
     renderCmp2DistTable('cmpHourTable', converted, unqualified, function (r) { return isBusinessHour(r[REQ_IDX.inquiry]) ? '업무시간 내(09~18시)' : '업무시간 외'; }, null);
@@ -2456,11 +2527,15 @@ function initDashboard() {
     document.getElementById('cmpStageJourneyTable').innerHTML = '<div class="stage-journey">' + rowsHtml + '</div>';
 
     var active = periodRows.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; });
-    var newCount = active.filter(function (r) { return r[REQ_IDX.stage] === 'new'; }).length;
-    var docsCount = active.filter(function (r) { return r[REQ_IDX.stage] === 'waiting_for_docs'; }).length;
+    var kanbanCounts = {};
+    active.forEach(function (r) { var st = r[REQ_IDX.stage]; if (KANBAN_STAGE_KEYS.indexOf(st) !== -1) kanbanCounts[st] = (kanbanCounts[st] || 0) + 1; });
+    var kanbanHtml = KANBAN_STAGE_KEYS.map(function (st) {
+      return '<span class="rate-pill">' + (STAGE_LABELS_REQ[st] || st) + ' ' + (kanbanCounts[st] || 0).toLocaleString() + '건</span>';
+    }).join(' ');
     document.getElementById('cmpRequestStageSnapshot').innerHTML =
-      '<b>계약 기준:</b> 계약군은 <code class="k">phase=contracted</code>이므로 계약 도달률은 100%로 표시합니다. 계약일 중앙값은 실제 계약일 기록이 있는 건만 계산합니다.<br><b>신규 → 자료 전달 분석 상태:</b> 현재 진행 중 스냅샷은 신규 접수 <b>' + newCount.toLocaleString() + '건</b>, 자료 대기 <b>' + docsCount.toLocaleString() + '건</b>입니다. ' +
-      'Bassip 원본에는 문의 단계 이력 테이블이 없고, 계약 후 사건 단계용 <code class="k">case_stage_histories</code>만 존재합니다. 따라서 현재 두 수는 스냅샷이며 신규→자료 전달 전환율이나 체류기간으로 해석할 수 없습니다.';
+      '<b>계약 기준:</b> 계약군은 <code class="k">phase=contracted</code>이므로 계약 도달률은 100%로 표시합니다. 계약일 중앙값은 실제 계약일 기록이 있는 건만 계산합니다.<br>' +
+      '<b>초기 단계(칸반) 현재 스냅샷:</b> ' + kanbanHtml + '<br>' +
+      'Bassip 원본에는 문의 단계 이력 테이블이 없고(사건 단계용 <code class="k">case_stage_histories</code>만 존재), 위 건수는 "지금 이 순간" 스냅샷입니다 — 단계별 전환율이나 체류기간(며칠 만에 넘어갔는지)으로는 해석할 수 없습니다.';
   }
 
   function renderCmpChannelQuality(periodRows) {
@@ -2532,17 +2607,56 @@ function initDashboard() {
     }).join('');
   }
 
+  // source_platform = requests.utm_source 원본값(ig/fb/th/google/an 등 짧은 코드) — 실제 값 기준으로 매칭한다.
+  function renderCmpCreativePerformance(periodRows) {
+    var groups = {};
+    periodRows.forEach(function (r) {
+      var creative = attributionCreative(r);
+      if (!creative) return;
+      var platform = attributionPlatform(r) || '(플랫폼 미기록)';
+      var key = platform + '|' + creative;
+      if (!groups[key]) groups[key] = { platform: platform, creative: creative, total: 0, converted: 0, unqualified: 0, quoted: 0 };
+      var g = groups[key]; g.total++;
+      if (r[REQ_IDX.phase] === 'contracted') g.converted++;
+      if (r[REQ_IDX.phase] === 'unqualified') g.unqualified++;
+      if (r[REQ_IDX.quote]) g.quoted++;
+    });
+    var rows = Object.keys(groups).map(function (k) { return groups[k]; })
+      .filter(function (g) { return (g.converted + g.unqualified) >= 10; })
+      .sort(function (a, b) { return pct(b.converted, b.converted + b.unqualified) - pct(a.converted, a.converted + a.unqualified); });
+    var el = document.getElementById('cmpCreativeTable');
+    if (!rows.length) { el.innerHTML = '<div class="empty-state">확정 10건 이상인 소재가 없습니다(표본이 더 쌓이면 표시됩니다).</div>'; return; }
+    var body = rows.map(function (g) {
+      var confirmed = g.converted + g.unqualified;
+      return '<tr><td>' + escapeHtml(g.platform) + '</td><td>' + escapeHtml(g.creative) + '</td>' +
+        '<td class="num font-mono">' + g.total.toLocaleString() + '</td>' +
+        '<td class="num font-mono">' + confirmed.toLocaleString() + '건</td>' +
+        '<td>' + rateCellHtml(pct(g.converted, confirmed) || 0, 100) + '</td>' +
+        '<td class="num font-mono">' + pctText(pct(g.quoted, g.total)) + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<thead><tr><th>플랫폼</th><th>소재(캠페인/카피)</th><th>전체 리드</th><th>확정 표본</th><th>확정 전환율</th><th>견적 도달률</th></tr></thead><tbody>' + body + '</tbody>';
+  }
+
   function attributionPlatform(r) {
     var raw = String(r[REQ_IDX.sourcePlatform] || '').trim();
-    if (!raw) return '';
+    if (!raw || raw.indexOf('{{') !== -1) return ''; // 추적 태그 미치환 버그값({{site_source_name}} 등)은 제외
     var low = raw.toLowerCase();
-    if (low.indexOf('instagram') !== -1 || low.indexOf('인스타') !== -1 || low === 'ig') return 'Instagram';
-    if (low.indexOf('facebook') !== -1 || low.indexOf('페이스북') !== -1 || low === 'fb') return 'Facebook';
+    if (low === 'ig' || low.indexOf('instagram') !== -1 || low.indexOf('인스타') !== -1) return 'Instagram';
+    if (low === 'fb' || low.indexOf('facebook') !== -1 || low.indexOf('페이스북') !== -1) return 'Facebook';
+    if (low === 'th' || low.indexOf('threads') !== -1 || low.indexOf('스레드') !== -1) return 'Threads';
+    if (low === 'an') return 'Meta 오디언스 네트워크';
     if (low.indexOf('meta') !== -1 || low.indexOf('메타') !== -1) return 'Meta (기타)';
     if (low.indexOf('google') !== -1 || low.indexOf('구글') !== -1) return 'Google';
     if (low.indexOf('naver') !== -1 || low.indexOf('네이버') !== -1) return 'Naver';
     if (low.indexOf('chatgpt') !== -1 || low.indexOf('openai') !== -1 || low === 'gpt') return 'GPT';
-    return '';
+    return raw;
+  }
+
+  // "소재"(utm_term, 없으면 utm_content) 기준 — 실제 광고 카피/캠페인 단위 성과
+  function attributionCreative(r) {
+    var raw = String(r[REQ_IDX.sourceCreative] || '').trim();
+    if (!raw || raw.indexOf('{{') !== -1) return '';
+    return raw;
   }
 
   function weekdayKR(dateStr) {
@@ -2953,6 +3067,10 @@ function initDashboard() {
     renderActionCenter();
   });
 
+  document.getElementById('weeklyPrevBtn').addEventListener('click', function () { state.weeklyOffset--; renderWeeklyReport(); });
+  document.getElementById('weeklyNextBtn').addEventListener('click', function () { state.weeklyOffset++; renderWeeklyReport(); });
+  document.getElementById('weeklyThisBtn').addEventListener('click', function () { state.weeklyOffset = 0; renderWeeklyReport(); });
+
   document.getElementById('sectionSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
     Array.prototype.forEach.call(document.querySelectorAll('#sectionSeg button'), function (b) { b.classList.remove('active'); });
@@ -3084,7 +3202,7 @@ function initDashboard() {
     });
   }
 
-  var FUNNEL_COLS = ['id', 'inquiry_at', 'category', 'channel', 'phase', 'stage', 'stage_updated_at', 'first_contact_at', 'first_quote_at', 'first_contract_at', 'unqualified_reason', 'source_platform'];
+  var FUNNEL_COLS = ['id', 'inquiry_at', 'category', 'channel', 'phase', 'stage', 'stage_updated_at', 'first_contact_at', 'first_quote_at', 'first_contract_at', 'unqualified_reason', 'source_platform', 'company_id', 'source_medium', 'source_creative'];
   var CASE_COLS = ['id', 'request_id', 'inquiry_at', 'first_contact_at', 'first_quote_at', 'contract_date', 'commission_date', 'filing_official_date', 'registration_official_date', 'ip_type', 'category', 'assignee_id'];
   var STAGE_COLS = ['case_id', 'stage', 'changed_at'];
 

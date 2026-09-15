@@ -18,12 +18,18 @@ create table if not exists funnel_rows (
   first_quote_at timestamptz,
   first_contract_at timestamptz,
   unqualified_reason text,
-  source_platform text
+  source_platform text,
+  company_id text,
+  source_medium text,
+  source_creative text
 );
 
 -- 기존 프로젝트에도 안전하게 컬럼을 추가한다.
 alter table funnel_rows add column if not exists source_platform text;
 alter table funnel_rows add column if not exists stage_updated_at timestamptz;
+alter table funnel_rows add column if not exists company_id text;
+alter table funnel_rows add column if not exists source_medium text;
+alter table funnel_rows add column if not exists source_creative text;
 
 -- 사건 단위 데이터 (계약 체결 이후 진행 상황)
 create table if not exists case_rows (

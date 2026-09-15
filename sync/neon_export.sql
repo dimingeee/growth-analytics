@@ -34,16 +34,10 @@ select coalesce(json_agg(row_to_json(t)), '[]'::json) from (
     fq.at as first_quote_at,
     rc.first_contract_at,
     r.unqualified_reason,
-    coalesce(
-      nullif(to_jsonb(r)->>'inbound_channel_detail', ''),
-      nullif(to_jsonb(r)->>'inbound_detail', ''),
-      nullif(to_jsonb(r)->>'inbound_source', ''),
-      nullif(to_jsonb(r)->>'source_platform', ''),
-      nullif(to_jsonb(r)->>'platform', ''),
-      nullif(to_jsonb(r)->>'utm_source', ''),
-      nullif(to_jsonb(r)#>>'{metadata,utm_source}', ''),
-      nullif(to_jsonb(r)#>>'{marketing,platform}', '')
-    ) as source_platform
+    r.company_id,
+    nullif(r.utm_source, '') as source_platform,
+    nullif(r.utm_medium, '') as source_medium,
+    coalesce(nullif(r.utm_term, ''), nullif(r.utm_content, '')) as source_creative
   from public.requests r
   left join first_contact fc on fc.request_id = r.id
   left join first_quote fq on fq.request_id = r.id
