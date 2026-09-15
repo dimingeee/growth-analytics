@@ -274,6 +274,12 @@
   .rate-cell-fill { position: absolute; top: 0; left: 0; height: 100%; border-radius: 6px; background: var(--accent); min-width: 2px; }
   .rate-cell-value { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13.5px; color: var(--ink); width: 52px; text-align: right; flex: none; }
   td:has(.rate-cell) { width: 45%; }
+  /* cmpStageSpeedMatrix: 한 행에 rate-cell이 5개(시간대별 열) — 위 45% 규칙을 그대로 적용하면
+     열 5개 * 45%로 표가 터져 첫 열(구간명)이 짓눌려 세로로 한 글자씩 줄바꿈되는 버그가 있었다. */
+  #cmpStageSpeedMatrix td:has(.rate-cell) { width: auto; min-width: 92px; }
+  #cmpStageSpeedMatrix td:first-child { white-space: nowrap; width: 1%; }
+  #cmpStageSpeedMatrix .rate-cell { flex-direction: column; gap: 4px; align-items: stretch; }
+  #cmpStageSpeedMatrix .rate-cell-value { width: auto; text-align: center; }
   tr.rate-best td { background: var(--accent-tint); }
   tr.rate-best .rate-cell-fill { background: var(--accent-ink); }
   tr.rate-worst td { background: color-mix(in srgb, var(--brick) 7%, var(--surface)); }
@@ -871,9 +877,10 @@
     </div>
 
     <section class="card">
-      <div class="card-head"><div><div class="card-title">구간별 소요시간에 따른 최종 계약률</div><div class="card-title-sub">각 칸 = 그 구간을 그 시간대 안에 넘어간 건들의 최종 계약률 · 괄호는 표본 건수 · 표본 10건 미만은 생략</div></div></div>
+      <div class="card-head"><div><div class="card-title">소요시간에 따른 최종 계약률</div><div class="card-title-sub">각 칸 = 그 시간대 안에 첫 연락이 된 건들의 최종 계약률 · 작은 숫자는 표본 건수 · 표본 10건 미만은 생략</div></div></div>
       <div class="table-scroll"><table id="cmpStageSpeedMatrix"></table></div>
       <div class="mini-note" id="cmpStageSpeedInsight" style="margin-top:12px;"></div>
+      <p class="mini-note" style="margin-top:6px;">원래 "연락→견적"·"견적→계약" 구간도 넣었었는데, 실제로 세어보니 견적(quote_date) 기록이 미전환 1,442건 중 3건뿐이라(정식 견적서를 거의 안 씀) 그 두 구간은 계약군 쪽에만 표본이 쏠려 무의미하게 90~100%로만 나왔습니다. 그래서 양쪽 그룹 모두 기록이 충분한 이 구간만 남겼습니다.</p>
     </section>
 
     <section class="card">
@@ -2585,14 +2592,15 @@ function initDashboard() {
     for (var i = 0; i < STAGE_SPEED_BUCKETS.length; i++) if (d <= STAGE_SPEED_BUCKETS[i].max) return STAGE_SPEED_BUCKETS[i].key;
     return STAGE_SPEED_BUCKETS[STAGE_SPEED_BUCKETS.length - 1].key;
   }
-  // "이 구간을 며칠 만에 넘어갔는가"에 따라 최종 계약률이 달라지는지 본다 — 실제 시각이 있는
-  // 3개 구간(접수→연락, 연락→견적, 견적→계약)만 쓴다. 분모는 결과가 확정된(계약/미전환) 건만
-  // (진행 중은 최종 결과를 모르므로 제외) — 다른 결과-확정 집계 카드들과 같은 규칙.
+  // "이 구간을 며칠 만에 넘어갔는가"에 따라 최종 계약률이 달라지는지 본다. 원래 접수→연락,
+  // 연락→견적, 견적→계약 3구간으로 만들었는데, 실제 값을 Neon에서 직접 세어보니 뒤의 두 구간은
+  // 통계적으로 의미가 없었다 — 견적(quote_date) 기록이 미전환군 1,442건 중 단 3건, 계약군에서도
+  // 587건 중 245건뿐이라(정식 견적서를 거의 안 씀), "연락→견적"·"견적→계약" 칸은 사실상 계약군만
+  // 채워져 무조건 90~100%로 나오거나(표본이 계약군 쪽에 쏠려서) 표본 부족으로 비게 된다.
+  // 그래서 양쪽 그룹 모두에 실제로 기록이 있는 유일한 구간(접수→연락)만 남겼다.
   function renderCmpStageSpeedMatrix(periodRows) {
     var transitions = [
-      { label: '문의 접수 → 첫 연락', fromIdx: REQ_IDX.inquiry, toIdx: REQ_IDX.contact },
-      { label: '첫 연락 → 첫 견적', fromIdx: REQ_IDX.contact, toIdx: REQ_IDX.quote },
-      { label: '첫 견적 → 계약', fromIdx: REQ_IDX.quote, toIdx: REQ_IDX.contract }
+      { label: '문의 접수 → 첫 연락', fromIdx: REQ_IDX.inquiry, toIdx: REQ_IDX.contact }
     ];
     var MIN_N = 10;
     var rowsData = transitions.map(function (t) {
