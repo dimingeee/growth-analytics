@@ -44,8 +44,12 @@ create table if not exists case_rows (
   registration_official_date timestamptz,
   ip_type text,
   category text,
-  assignee_id text
+  assignee_id text,
+  contract_amount numeric,
+  comm_count integer
 );
+alter table case_rows add column if not exists contract_amount numeric;
+alter table case_rows add column if not exists comm_count integer;
 
 -- 사건 진행 단계 이력 (사건 1건당 여러 row)
 create table if not exists case_stage_events (

@@ -72,7 +72,9 @@ select coalesce(json_agg(row_to_json(t)), '[]'::json) from (
     cs.registration_date as registration_official_date,
     cs.ip_type::text as ip_type,
     r.category,
-    cs.assignee_id
+    cs.assignee_id,
+    c.supply_amount as contract_amount,
+    (select count(*) from public.communications cm where cm.request_id = r.id) as comm_count
   from public.cases cs
   left join public.contracts c on c.id = cs.contract_id and c.deleted_at is null
   left join public.requests r on r.id = c.request_id and r.deleted_at is null

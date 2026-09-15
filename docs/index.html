@@ -744,27 +744,30 @@
   <div id="viewRetainer" style="display:none;">
     <div class="dash-hero">
       <h2 class="font-head">재수임 분석</h2>
-      <p class="subtitle">기존 고객이 다시 의뢰하는가 — 재위임 문의와 신규 문의는 무엇이 다른가</p>
+      <p class="subtitle">기존 고객이 다시 의뢰하는가 — 재수임 문의와 신규 문의는 무엇이 다른가</p>
     </div>
 
     <section class="kpi-grid kpi-grid-sm" id="retainerKpiGrid"></section>
 
     <section class="card">
-      <div class="card-head"><div><div class="card-title">재위임 문의 vs 신규 문의</div><div class="card-title-sub" id="retainerChannelSub">문의 건수 · 계약 전환율 비교</div></div></div>
+      <div class="card-head"><div><div class="card-title">재수임 문의 vs 신규 문의</div><div class="card-title-sub" id="retainerChannelSub">문의 건수 · 계약 전환율 비교</div></div></div>
       <div class="table-scroll"><table id="retainerChannelTable"></table></div>
     </section>
 
-    <div class="section-divider">회사 단위 재위임 패턴 <span class="badge-fixed">현재 시점 고정</span></div>
+    <div class="section-divider">회사 단위 재수임 패턴 <span class="badge-fixed">현재 시점 고정</span></div>
     <p class="mini-note" id="retainerCompanyNote"></p>
-
-    <section class="card">
-      <div class="card-head"><div><div class="card-title">재위임까지 걸린 기간</div><div class="card-title-sub" id="retainerGapSub"></div></div></div>
-      <div id="retainerGapChart"></div>
-    </section>
 
     <section class="card">
       <div class="card-head"><div><div class="card-title">위임 유형 조합</div><div class="card-title-sub">2건 이상 수임한 회사가 실제로 어떤 IP 유형을 함께/따로 맡겼는가</div></div></div>
       <div class="table-scroll"><table id="retainerComboTable"></table></div>
+    </section>
+
+    <div class="section-divider">재수임 이유 분석</div>
+    <p class="mini-note">재수임한 회사의 <b>첫 사건</b>과, 한 번만 맡기고 끝난 회사의 사건을 비교합니다 — 무엇이 달랐길래 다시 왔는가.</p>
+    <section class="card">
+      <div class="card-head"><div><div class="card-title">재수임군 vs 1회성군 · 첫 사건 특성 비교</div><div class="card-title-sub" id="retainerReasonSub"></div></div></div>
+      <div class="table-scroll"><table id="retainerReasonTable"></table></div>
+      <div class="mini-note" id="retainerReasonNote" style="margin-top:12px;"></div>
     </section>
   </div>
 
@@ -868,8 +871,13 @@
     </div>
 
     <section class="card">
-      <div class="card-head"><div><div class="card-title">계약군 vs 미전환군 단계 비교</div><div class="card-title-sub">큰 숫자: 단계 도달률 · 작은 숫자: 문의 접수 후 해당 단계까지 중앙 소요일</div></div></div>
+      <div class="card-head"><div><div class="card-title">계약군 vs 미전환군 단계 비교</div><div class="card-title-sub">큰 숫자: 단계 도달률 · 작은 숫자: 문의 접수 후 해당 단계까지 중앙 소요일 (실제 이력 기록 4개 지점만 — 문의접수/첫연락/첫견적/계약)</div></div></div>
       <div id="cmpStageJourneyTable"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><div><div class="card-title">초기 단계(칸반)별 현재 체류 현황</div><div class="card-title-sub">지금 이 순간 각 단계에 있는 문의 건수와 체류일 — 위 카드와 같은 기간 필터 적용</div></div></div>
+      <div id="cmpKanbanStageTable"></div>
       <div id="cmpRequestStageSnapshot" class="data-limit-note"></div>
     </section>
 
@@ -1018,7 +1026,7 @@ function initDashboard() {
     no_response: '고객 무응답', cost: '가격', design: '디자인', '': '사유 미기록'
   };
   var IMPROVABLE_REASON_KEYS = ['delayed_response', 'cost'];
-  var CASE_IDX = { id: 0, requestId: 1, inquiry: 2, contact: 3, quote: 4, contractDate: 5, commission: 6, filingOfficial: 7, registrationOfficial: 8, ipType: 9, category: 10, assignee: 11 };
+  var CASE_IDX = { id: 0, requestId: 1, inquiry: 2, contact: 3, quote: 4, contractDate: 5, commission: 6, filingOfficial: 7, registrationOfficial: 8, ipType: 9, category: 10, assignee: 11, contractAmount: 12, commCount: 13 };
   var ASSIGNEE_NAMES = {
     'crv150y3tyz3fdq0l3v8at7j': '베이스특허(공용)',
     'pg7dchckwbjexwv4dsmyoeu2': '최병서',
@@ -1838,45 +1846,58 @@ function initDashboard() {
     d.setUTCDate(d.getUTCDate() - (dow - 1) + offset * 7);
     return d;
   }
+  // 출원/등록은 cases.filing_date·registration_date(공식 기록일) 대신 case_stage_histories의
+  // filing_report/registered 최초 도달일을 쓴다 — 공식 기록일은 실제 처리일보다 며칠~몇 달 늦게
+  // 입력되는 경우가 많아(예: 9/13 출원 건이 9/14에야 "출원 완료 보고" 처리) 주간 보고서처럼
+  // "이번 주에 뭘 처리했나"를 보려면 내부 처리 시각(stage_histories)이 훨씬 정확하다.
+  function weeklyCounts(monday, sundayEnd) {
+    function inWeek(dateStr) {
+      var d = parseISO(dateStr);
+      return d && d.getTime() >= monday.getTime() && d.getTime() <= sundayEnd.getTime();
+    }
+    function stageEventCount(stageCode) {
+      return STAGE_EVENTS.filter(function (e) { return e[1] === stageCode && inWeek(e[2]); }).length;
+    }
+    return {
+      inquiry: REQ.filter(function (r) { return inWeek(r[REQ_IDX.inquiry]); }).length,
+      contract: CASES.filter(function (c) { return inWeek(c[CASE_IDX.commission] || c[CASE_IDX.contractDate]); }).length,
+      draft: stageEventCount('draft_delivered'),
+      revision: stageEventCount('revision_delivered'),
+      filing: stageEventCount('filing_report'),
+      registration: stageEventCount('registered')
+    };
+  }
   function renderWeeklyReport() {
     var now = new Date();
     var monday = weekMonday(now, state.weeklyOffset);
     var sundayEnd = new Date(monday.getTime() + 7 * 86400000 - 1);
+    var prevMonday = weekMonday(now, state.weeklyOffset - 1);
+    var prevSundayEnd = new Date(prevMonday.getTime() + 7 * 86400000 - 1);
     var weekNum = Math.ceil(monday.getUTCDate() / 7);
     var mm = function (d) { return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
     document.getElementById('weeklyReportLabel').textContent =
       (monday.getUTCMonth() + 1) + '월 ' + weekNum + '주차 (' + mm(monday) + '~' + mm(sundayEnd) + ')' + (state.weeklyOffset === 0 ? ' · 이번 주' : '');
     document.getElementById('weeklyThisBtn').disabled = state.weeklyOffset === 0;
 
-    function inWeek(dateStr) {
-      var d = parseISO(dateStr);
-      return d && d.getTime() >= monday.getTime() && d.getTime() <= sundayEnd.getTime();
-    }
-    var inquiryCount = REQ.filter(function (r) { return inWeek(r[REQ_IDX.inquiry]); }).length;
-    var contractCount = CASES.filter(function (c) { return inWeek(c[CASE_IDX.commission] || c[CASE_IDX.contractDate]); }).length;
+    var cur = weeklyCounts(monday, sundayEnd);
+    var prev = weeklyCounts(prevMonday, prevSundayEnd);
     var inProgressCount = REQ.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; }).length;
-    function stageEventCount(stageCode) {
-      return STAGE_EVENTS.filter(function (e) { return e[1] === stageCode && inWeek(e[2]); }).length;
-    }
-    var draftCount = stageEventCount('draft_delivered');
-    var revisionCount = stageEventCount('revision_delivered');
-    var filingCount = CASES.filter(function (c) { return inWeek(c[CASE_IDX.filingOfficial]); }).length;
-    var registrationCount = CASES.filter(function (c) { return inWeek(c[CASE_IDX.registrationOfficial]); }).length;
 
     var items = [
-      { label: '문의', value: inquiryCount },
-      { label: '계약(수임)', value: contractCount },
-      { label: '진행 중', value: inProgressCount, note: '현재 기준' },
-      { label: '초안 송부', value: draftCount },
-      { label: '수정안 전달 완료', value: revisionCount },
-      { label: '출원', value: filingCount },
-      { label: '등록', value: registrationCount }
+      { label: '문의', cur: cur.inquiry, prev: prev.inquiry },
+      { label: '계약(수임)', cur: cur.contract, prev: prev.contract },
+      { label: '진행 중', cur: inProgressCount, note: '현재 기준(주차 무관 스냅샷)' },
+      { label: '초안 송부', cur: cur.draft, prev: prev.draft },
+      { label: '수정안 전달 완료', cur: cur.revision, prev: prev.revision },
+      { label: '출원', cur: cur.filing, prev: prev.filing },
+      { label: '등록', cur: cur.registration, prev: prev.registration }
     ];
     document.getElementById('weeklyKpiGrid').innerHTML = items.map(function (it) {
-      return '<div class="kpi"><div class="kpi-label">' + it.label + '</div><div class="kpi-value font-mono">' + it.value.toLocaleString() + '건</div>' + (it.note ? '<div class="kpi-sub">' + it.note + '</div>' : '') + '</div>';
+      return '<div class="kpi"><div class="kpi-label">' + it.label + '</div><div class="kpi-value font-mono">' + it.cur.toLocaleString() + '건</div>' +
+        (it.note ? '<div class="kpi-sub">' + it.note + '</div>' : cmpLine(it.cur, it.prev, { unit: '건' })) + '</div>';
     }).join('');
     document.getElementById('weeklyReportNote').textContent =
-      '문의=접수일, 계약(수임)=수임일(없으면 계약체결일), 초안 송부/수정안 전달 완료=사건 단계 이력(case_stage_histories) 최초 도달일, 출원/등록=공식 기록일(cases.filing_date/registration_date) 기준. "진행 중"만 예외로 과거 주에도 항상 현재 시점 스냅샷입니다.';
+      '문의=접수일, 계약(수임)=수임일(없으면 계약체결일), 초안 송부/수정안 전달 완료/출원/등록=사건 단계 이력(case_stage_histories) 최초 도달일(filing_report/registered — 공식 기록일보다 실제 처리 시점에 가까움) 기준. 증감은 직전 주(월~일) 대비이며, "진행 중"만 예외로 항상 현재 시점 스냅샷입니다.';
   }
 
   // 최근 3개월 신규 문의 중 결과가 확정된 것(전환/미전환)만으로 전환율을 본다 —
@@ -2306,8 +2327,8 @@ function initDashboard() {
   }
 
   // 재수임 분석 — company_id가 아직 동기화되지 않았으면(REQ_IDX.companyId 없음) 회사 단위
-  // 분석(재위임까지 걸린 기간 · 위임 유형 조합)은 건너뛰고 안내만 표시한다. 채널 기반 비교
-  // (재위임 문의 vs 신규 문의)는 channel='additional_retainer' 값이 이미 있어 즉시 가능하다.
+  // 분석(위임 유형 조합 · 재수임 이유 분석)은 건너뛰고 안내만 표시한다. 채널 기반 비교
+  // (재수임 문의 vs 신규 문의)는 channel='additional_retainer' 값이 이미 있어 즉시 가능하다.
   function hasCompanyId() { return typeof REQ_IDX.companyId !== 'undefined'; }
 
   function buildCompanyCaseHistory() {
@@ -2322,7 +2343,7 @@ function initDashboard() {
       var d = c[CASE_IDX.commission] || c[CASE_IDX.contractDate];
       if (!d) return;
       if (!byCompany[companyId]) byCompany[companyId] = [];
-      byCompany[companyId].push({ date: d, ipType: c[CASE_IDX.ipType] });
+      byCompany[companyId].push({ date: d, ipType: c[CASE_IDX.ipType], row: c });
     });
     return Object.keys(byCompany).map(function (id) {
       var cases = byCompany[id].slice().sort(function (a, b) { return parseISO(a.date).getTime() - parseISO(b.date).getTime(); });
@@ -2336,60 +2357,30 @@ function initDashboard() {
       document.getElementById('retainerChannelSub'),
       REQ,
       function (r) { return r[REQ_IDX.channel] === 'additional_retainer' ? 'repeat' : 'new'; },
-      { repeat: '재위임 문의(기존 고객)', new: '신규 문의' },
+      { repeat: '재수임 문의(기존 고객)', new: '신규 문의' },
       '전체 기간 · 문의 접수일 기준'
     );
 
     var companies = buildCompanyCaseHistory();
     if (!hasCompanyId()) {
-      document.getElementById('retainerKpiGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;">회사 식별 데이터 연동 준비 중입니다 — 연동되면 아래 "재위임까지 걸린 기간"·"위임 유형 조합"이 채워집니다.</div>';
+      document.getElementById('retainerKpiGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;">회사 식별 데이터 연동 준비 중입니다 — 연동되면 아래 "위임 유형 조합"·"재수임 이유 분석"이 채워집니다.</div>';
       document.getElementById('retainerCompanyNote').textContent = '';
-      document.getElementById('retainerGapChart').innerHTML = '';
-      document.getElementById('retainerGapSub').textContent = '';
       document.getElementById('retainerComboTable').innerHTML = '';
+      document.getElementById('retainerReasonTable').innerHTML = '';
+      document.getElementById('retainerReasonSub').textContent = '';
+      document.getElementById('retainerReasonNote').textContent = '';
       return;
     }
 
     var repeatCompanies = companies.filter(function (c) { return c.cases.length >= 2; });
+    var oneTimeCompanies = companies.filter(function (c) { return c.cases.length === 1; });
     var repeatShare = companies.length ? repeatCompanies.length / companies.length * 100 : 0;
     var kpiHtml = '';
     kpiHtml += '<div class="kpi"><div class="kpi-label">전체 고객사</div><div class="kpi-value font-mono">' + companies.length.toLocaleString() + '개</div></div>';
-    kpiHtml += '<div class="kpi highlight"><div class="kpi-label">재위임 고객사</div><div class="kpi-value font-mono">' + repeatCompanies.length.toLocaleString() + '개</div></div>';
-    kpiHtml += '<div class="kpi"><div class="kpi-label">재위임 비중</div><div class="kpi-value font-mono">' + repeatShare.toFixed(1) + '%</div></div>';
+    kpiHtml += '<div class="kpi highlight"><div class="kpi-label">재수임 고객사</div><div class="kpi-value font-mono">' + repeatCompanies.length.toLocaleString() + '개</div></div>';
+    kpiHtml += '<div class="kpi"><div class="kpi-label">재수임 비중</div><div class="kpi-value font-mono">' + repeatShare.toFixed(1) + '%</div></div>';
     document.getElementById('retainerKpiGrid').innerHTML = kpiHtml;
     document.getElementById('retainerCompanyNote').textContent = '사건 2건 이상 수임한 회사 ' + repeatCompanies.length.toLocaleString() + '개 기준(수임일 없는 사건은 계약체결일로 대체, 그마저 없으면 제외)';
-
-    var gaps = [];
-    repeatCompanies.forEach(function (c) {
-      for (var i = 1; i < c.cases.length; i++) {
-        var d = daysBetween(parseISO(c.cases[i - 1].date), parseISO(c.cases[i].date));
-        if (d >= 0) gaps.push(d);
-      }
-    });
-    var gMed = medianOf(gaps);
-    document.getElementById('retainerGapSub').textContent = (gMed != null ? '중앙값 ' + gMed.toFixed(0) + '일 · ' : '') + '연속 재위임 간격 ' + gaps.length.toLocaleString() + '건 기준';
-    if (!gaps.length) {
-      document.getElementById('retainerGapChart').innerHTML = '<div class="empty-state">재위임 간격을 계산할 데이터가 없습니다.</div>';
-    } else {
-      var gapBuckets = [
-        { key: 'g0', label: '30일 이내', max: 30 },
-        { key: 'g1', label: '30~90일', max: 90 },
-        { key: 'g2', label: '90~180일', max: 180 },
-        { key: 'g3', label: '180~365일', max: 365 },
-        { key: 'g4', label: '1년+', max: Infinity }
-      ];
-      function gapBucketOf(d) { for (var i = 0; i < gapBuckets.length; i++) if (d <= gapBuckets[i].max) return gapBuckets[i].key; return gapBuckets[gapBuckets.length - 1].key; }
-      var gapCounts = {}; gapBuckets.forEach(function (b) { gapCounts[b.key] = 0; });
-      gaps.forEach(function (d) { gapCounts[gapBucketOf(d)]++; });
-      var gValues = gapBuckets.map(function (b) { return gaps.length ? gapCounts[b.key] / gaps.length * 100 : 0; });
-      renderBarChart(document.getElementById('retainerGapChart'), {
-        values: gValues,
-        labels: gapBuckets.map(function (b) { return { main: b.label, sub: 'n=' + gapCounts[b.key] }; }),
-        valueLabels: gValues.map(function (v) { return v.toFixed(1) + '%'; }),
-        tooltips: gapBuckets.map(function (b) { return gapCounts[b.key].toLocaleString() + '건 (' + (gaps.length ? (gapCounts[b.key] / gaps.length * 100).toFixed(1) : '0') + '%)'; }),
-        unit: '%'
-      });
-    }
 
     var comboCounts = {}, comboOrder = [];
     repeatCompanies.forEach(function (c) {
@@ -2409,6 +2400,67 @@ function initDashboard() {
       }).join('') + '</tbody>';
       document.getElementById('retainerComboTable').innerHTML = comboThead + comboTbody;
     }
+
+    renderRetainerReasonAnalysis(repeatCompanies, oneTimeCompanies);
+  }
+
+  // 재수임 이유 분석 — "재수임한 회사의 첫 사건"과 "한 번만 맡기고 끝난 회사의 사건"을 비교해
+  // 무엇이 재수임으로 이어졌는지 단서를 찾는다. 전부 사건 단위 실측값(견적금액·case_stage_histories
+  // 최초도달시각·커뮤니케이션 수)만 쓴다 — 다른 세션이 이미 확인한 것처럼 request 단계엔 이런
+  // 이력이 없어 사건(계약 이후) 단계에서만 비교 가능.
+  function renderRetainerReasonAnalysis(repeatCompanies, oneTimeCompanies) {
+    var repeatCases = repeatCompanies.map(function (c) { return c.cases[0].row; });
+    var oneTimeCases = oneTimeCompanies.map(function (c) { return c.cases[0].row; });
+
+    function nums(cases, idx) { return cases.map(function (c) { return c[idx]; }).filter(function (v) { return v != null; }); }
+    function stageDays(cases, fromCode, toCode) {
+      return cases.map(function (c) {
+        var a = stageGetter(fromCode)(c), b = stageGetter(toCode)(c);
+        if (!a || !b) return null;
+        var d = daysBetween(parseISO(a), parseISO(b));
+        return d >= 0 ? d : null;
+      }).filter(function (v) { return v != null; });
+    }
+    function stageHours(cases, fromCode, toCode) {
+      return cases.map(function (c) {
+        var a = stageGetter(fromCode)(c), b = stageGetter(toCode)(c);
+        if (!a || !b) return null;
+        var h = (parseISO(b).getTime() - parseISO(a).getTime()) / 3600000;
+        return h >= 0 ? h : null;
+      }).filter(function (v) { return v != null; });
+    }
+
+    var repeatAmt = nums(repeatCases, CASE_IDX.contractAmount), oneAmt = nums(oneTimeCases, CASE_IDX.contractAmount);
+    var repeatComm = nums(repeatCases, CASE_IDX.commCount), oneComm = nums(oneTimeCases, CASE_IDX.commCount);
+    var repeatDraft = stageDays(repeatCases, 'case_opened', 'draft_delivered'), oneDraft = stageDays(oneTimeCases, 'case_opened', 'draft_delivered');
+    var repeatFiling = stageHours(repeatCases, 'filing_needed', 'filing_report'), oneFiling = stageHours(oneTimeCases, 'filing_needed', 'filing_report');
+
+    var metrics = [
+      { label: '평균 계약금액(공급가액)', lowerIsBetterHint: false, repeat: mean(repeatAmt), base: mean(oneAmt), n: [repeatAmt.length, oneAmt.length], fmt: function (v) { return v == null ? '—' : Math.round(v).toLocaleString() + '원'; } },
+      { label: '커뮤니케이션 횟수(평균)', lowerIsBetterHint: false, repeat: mean(repeatComm), base: mean(oneComm), n: [repeatComm.length, oneComm.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '회'; } },
+      { label: '명세서 작성 소요일(사건개시→초안송부, 중앙값)', lowerIsBetterHint: true, repeat: medianOf(repeatDraft), base: medianOf(oneDraft), n: [repeatDraft.length, oneDraft.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '일'; } },
+      { label: '출원지시→출원 소요시간(중앙값)', lowerIsBetterHint: true, repeat: medianOf(repeatFiling), base: medianOf(oneFiling), n: [repeatFiling.length, oneFiling.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '시간'; } }
+    ];
+
+    var MIN_N = 5;
+    var body = metrics.map(function (m) {
+      var enough = m.n[0] >= MIN_N && m.n[1] >= MIN_N;
+      var diffText = '—';
+      if (enough && m.repeat != null && m.base != null && m.base !== 0) {
+        var diffPct = (m.repeat - m.base) / Math.abs(m.base) * 100;
+        var favorable = m.lowerIsBetterHint ? diffPct < 0 : null;
+        diffText = (diffPct >= 0 ? '+' : '') + diffPct.toFixed(0) + '%' + (favorable === true ? ' (재수임군이 더 빠름)' : favorable === false ? ' (재수임군이 더 느림)' : '');
+      }
+      return '<tr><td>' + m.label + '</td>' +
+        '<td class="num font-mono">' + m.fmt(m.repeat) + '<small> n=' + m.n[0] + '</small></td>' +
+        '<td class="num font-mono">' + m.fmt(m.base) + '<small> n=' + m.n[1] + '</small></td>' +
+        '<td class="num font-mono">' + (enough ? diffText : '표본 부족') + '</td></tr>';
+    }).join('');
+    document.getElementById('retainerReasonTable').innerHTML =
+      '<thead><tr><th>지표</th><th>재수임군(첫 사건)</th><th>1회성군</th><th>차이</th></tr></thead><tbody>' + body + '</tbody>';
+    document.getElementById('retainerReasonSub').textContent = '재수임 고객사 ' + repeatCases.length.toLocaleString() + '개 · 1회성 고객사 ' + oneTimeCases.length.toLocaleString() + '개 기준';
+    document.getElementById('retainerReasonNote').textContent =
+      '표본 ' + MIN_N + '건 미만인 지표는 "표본 부족"으로 표시합니다. 계약금액·커뮤니케이션 횟수는 방향성 해석을 자동으로 달지 않았습니다(낮다고 반드시 좋은 게 아니라서) — 표의 두 값을 직접 비교해서 판단해주세요. 더 세분화된 분석(예: 담당자별, 임계값 이상 비율)이 필요하면 말씀해주세요.';
   }
 
   function renderCompare() {
@@ -2472,6 +2524,7 @@ function initDashboard() {
     renderCmpContactSpeed(converted, unqualified);
     renderCmpContactRateTable(periodRows);
     renderCmpStageJourney(periodRows, converted, unqualified);
+    renderCmpKanbanStage(periodRows);
     renderCmp2DistTable('cmpIpTable', converted, unqualified, function (r) { return r[REQ_IDX.category] || '(미기록)'; }, null);
     renderCmpPlatformPerformance(periodRows);
     renderCmpCreativePerformance(periodRows);
@@ -2525,17 +2578,24 @@ function initDashboard() {
         '<div class="stage-group bad"><div class="stage-group-label">● 미전환군</div><div class="stage-big">' + pctText(pct(uReach, unqualified.length)) + '</div><div class="stage-days">' + medText(uMed) + '</div></div></article>';
     }).join('');
     document.getElementById('cmpStageJourneyTable').innerHTML = '<div class="stage-journey">' + rowsHtml + '</div>';
+  }
 
+  // Bassip 앱 칸반 보드(New→...→검토 완료)와 같은 단계로 "지금 이 순간 어디에 얼마나 머물러
+  // 있는지"를 보여준다. request엔 case_stage_histories 같은 단계 이력이 없어(위 renderCmpStageJourney의
+  // 4개 실이력 지점과 달리) 도달률·소요일 계산은 못하고, stage_updated_at 기반 근사 체류일만 가능하다.
+  function renderCmpKanbanStage(periodRows) {
+    var now = new Date();
     var active = periodRows.filter(function (r) { return IN_PROGRESS_PHASES.indexOf(r[REQ_IDX.phase]) !== -1; });
-    var kanbanCounts = {};
-    active.forEach(function (r) { var st = r[REQ_IDX.stage]; if (KANBAN_STAGE_KEYS.indexOf(st) !== -1) kanbanCounts[st] = (kanbanCounts[st] || 0) + 1; });
-    var kanbanHtml = KANBAN_STAGE_KEYS.map(function (st) {
-      return '<span class="rate-pill">' + (STAGE_LABELS_REQ[st] || st) + ' ' + (kanbanCounts[st] || 0).toLocaleString() + '건</span>';
-    }).join(' ');
+    var rowsHtml = KANBAN_STAGE_KEYS.map(function (st) {
+      var rows = active.filter(function (r) { return r[REQ_IDX.stage] === st; });
+      var elapsed = rows.map(function (r) { return stageAgeDays(r, now); }).filter(function (v) { return v != null; });
+      var med = medianOf(elapsed);
+      return '<article class="stage-card"><div class="stage-card-head"><b>' + (STAGE_LABELS_REQ[st] || st) + '</b><span>' + rows.length.toLocaleString() + '건</span></div>' +
+        '<div class="stage-group"><div class="stage-big">' + rows.length.toLocaleString() + '건</div><div class="stage-days">' + (med != null ? '현재 단계 중앙값 ' + med.toFixed(1) + '일째' : '데이터 없음') + '</div></div></article>';
+    }).join('');
+    document.getElementById('cmpKanbanStageTable').innerHTML = '<div class="stage-journey">' + rowsHtml + '</div>';
     document.getElementById('cmpRequestStageSnapshot').innerHTML =
-      '<b>계약 기준:</b> 계약군은 <code class="k">phase=contracted</code>이므로 계약 도달률은 100%로 표시합니다. 계약일 중앙값은 실제 계약일 기록이 있는 건만 계산합니다.<br>' +
-      '<b>초기 단계(칸반) 현재 스냅샷:</b> ' + kanbanHtml + '<br>' +
-      'Bassip 원본에는 문의 단계 이력 테이블이 없고(사건 단계용 <code class="k">case_stage_histories</code>만 존재), 위 건수는 "지금 이 순간" 스냅샷입니다 — 단계별 전환율이나 체류기간(며칠 만에 넘어갔는지)으로는 해석할 수 없습니다.';
+      'request(문의)엔 case처럼 단계별 진입 시각 이력이 없어(사건 단계용 <code class="k">case_stage_histories</code>만 존재), "현재 단계 며칠째"는 레코드 마지막 수정 시각(<code class="k">stage_updated_at</code>) 기준 근사치입니다 — "진행 상황" 탭과 같은 계산 방식이며, 위 카드처럼 "며칠 만에 이 단계에 도달했는지"는 계산할 수 없습니다.';
   }
 
   function renderCmpChannelQuality(periodRows) {
@@ -3203,7 +3263,7 @@ function initDashboard() {
   }
 
   var FUNNEL_COLS = ['id', 'inquiry_at', 'category', 'channel', 'phase', 'stage', 'stage_updated_at', 'first_contact_at', 'first_quote_at', 'first_contract_at', 'unqualified_reason', 'source_platform', 'company_id', 'source_medium', 'source_creative'];
-  var CASE_COLS = ['id', 'request_id', 'inquiry_at', 'first_contact_at', 'first_quote_at', 'contract_date', 'commission_date', 'filing_official_date', 'registration_official_date', 'ip_type', 'category', 'assignee_id'];
+  var CASE_COLS = ['id', 'request_id', 'inquiry_at', 'first_contact_at', 'first_quote_at', 'contract_date', 'commission_date', 'filing_official_date', 'registration_official_date', 'ip_type', 'category', 'assignee_id', 'contract_amount', 'comm_count'];
   var STAGE_COLS = ['case_id', 'stage', 'changed_at'];
 
   async function loadDataAndStart() {

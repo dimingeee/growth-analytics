@@ -15,6 +15,8 @@ alter table funnel_rows add column if not exists stage_updated_at timestamptz;
 alter table funnel_rows add column if not exists company_id text;
 alter table funnel_rows add column if not exists source_medium text;
 alter table funnel_rows add column if not exists source_creative text;
+alter table case_rows add column if not exists contract_amount numeric;
+alter table case_rows add column if not exists comm_count integer;
 SQL
 
 # neon_export.sql에서 "-- @query: <name>" 블록 하나를 뽑아 순수 SQL만 반환
@@ -54,8 +56,8 @@ sync_table "funnel_rows" "funnel_rows" \
   "id text, inquiry_at timestamptz, category text, channel text, phase text, stage text, stage_updated_at timestamptz, first_contact_at timestamptz, first_quote_at timestamptz, first_contract_at timestamptz, unqualified_reason text, source_platform text, company_id text, source_medium text, source_creative text"
 
 sync_table "case_rows" "case_rows" \
-  "id, request_id, inquiry_at, first_contact_at, first_quote_at, contract_date, commission_date, filing_official_date, registration_official_date, ip_type, category, assignee_id" \
-  "id text, request_id text, inquiry_at timestamptz, first_contact_at timestamptz, first_quote_at timestamptz, contract_date timestamptz, commission_date timestamptz, filing_official_date timestamptz, registration_official_date timestamptz, ip_type text, category text, assignee_id text"
+  "id, request_id, inquiry_at, first_contact_at, first_quote_at, contract_date, commission_date, filing_official_date, registration_official_date, ip_type, category, assignee_id, contract_amount, comm_count" \
+  "id text, request_id text, inquiry_at timestamptz, first_contact_at timestamptz, first_quote_at timestamptz, contract_date timestamptz, commission_date timestamptz, filing_official_date timestamptz, registration_official_date timestamptz, ip_type text, category text, assignee_id text, contract_amount numeric, comm_count integer"
 
 sync_table "case_stage_events" "case_stage_events" \
   "case_id, stage, changed_at" \
