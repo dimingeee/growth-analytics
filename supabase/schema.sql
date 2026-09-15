@@ -13,6 +13,7 @@ create table if not exists funnel_rows (
   channel text,
   phase text,
   stage text,
+  stage_updated_at timestamptz,
   first_contact_at timestamptz,
   first_quote_at timestamptz,
   first_contract_at timestamptz,
@@ -20,8 +21,9 @@ create table if not exists funnel_rows (
   source_platform text
 );
 
--- 기존 프로젝트에도 안전하게 유입 상세 컬럼을 추가한다.
+-- 기존 프로젝트에도 안전하게 컬럼을 추가한다.
 alter table funnel_rows add column if not exists source_platform text;
+alter table funnel_rows add column if not exists stage_updated_at timestamptz;
 
 -- 사건 단위 데이터 (계약 체결 이후 진행 상황)
 create table if not exists case_rows (

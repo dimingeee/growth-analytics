@@ -11,6 +11,7 @@ QFILE="$(cd "$(dirname "$0")" && pwd)/neon_export.sql"
 # 기존 Supabase 프로젝트를 별도 수동 마이그레이션 없이 확장한다.
 psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
 alter table funnel_rows add column if not exists source_platform text;
+alter table funnel_rows add column if not exists stage_updated_at timestamptz;
 SQL
 
 # neon_export.sql에서 "-- @query: <name>" 블록 하나를 뽑아 순수 SQL만 반환
@@ -46,8 +47,8 @@ SQL
 }
 
 sync_table "funnel_rows" "funnel_rows" \
-  "id, inquiry_at, category, channel, phase, stage, first_contact_at, first_quote_at, first_contract_at, unqualified_reason, source_platform" \
-  "id text, inquiry_at timestamptz, category text, channel text, phase text, stage text, first_contact_at timestamptz, first_quote_at timestamptz, first_contract_at timestamptz, unqualified_reason text, source_platform text"
+  "id, inquiry_at, category, channel, phase, stage, stage_updated_at, first_contact_at, first_quote_at, first_contract_at, unqualified_reason, source_platform" \
+  "id text, inquiry_at timestamptz, category text, channel text, phase text, stage text, stage_updated_at timestamptz, first_contact_at timestamptz, first_quote_at timestamptz, first_contract_at timestamptz, unqualified_reason text, source_platform text"
 
 sync_table "case_rows" "case_rows" \
   "id, request_id, inquiry_at, first_contact_at, first_quote_at, contract_date, commission_date, filing_official_date, registration_official_date, ip_type, category, assignee_id" \

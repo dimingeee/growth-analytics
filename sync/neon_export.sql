@@ -29,6 +29,7 @@ select coalesce(json_agg(row_to_json(t)), '[]'::json) from (
     r.inbound_channel::text as channel,
     r.phase::text as phase,
     r.stage::text as stage,
+    r.updated_at as stage_updated_at,
     fc.at as first_contact_at,
     fq.at as first_quote_at,
     rc.first_contract_at,
