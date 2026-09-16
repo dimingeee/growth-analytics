@@ -771,10 +771,11 @@
     <div class="section-divider">재수임 이유 분석</div>
     <p class="mini-note">재수임한 회사의 <b>첫 사건</b>과, 한 번만 맡기고 끝난 회사의 사건을 비교합니다 — 무엇이 달랐길래 다시 왔는가.</p>
     <section class="card">
-      <div class="card-head"><div><div class="card-title">재수임군 vs 1회성군 · 첫 사건 특성 비교</div><div class="card-title-sub" id="retainerReasonSub"></div></div></div>
-      <div class="table-scroll"><table id="retainerReasonTable"></table></div>
-      <div class="mini-note" id="retainerReasonNote" style="margin-top:12px;"></div>
+      <div class="status-insights status-lead" id="retainerReasonHeadline"></div>
     </section>
+    <section class="kpi-grid" id="retainerReasonKpis"></section>
+    <p class="mini-note" id="retainerReasonSub" style="margin-top:4px;"></p>
+    <p class="mini-note" id="retainerReasonNote"></p>
   </div>
 
   <div id="statsContent" style="display:none;">
@@ -2368,7 +2369,8 @@ function initDashboard() {
       document.getElementById('retainerKpiGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;">회사 식별 데이터 연동 준비 중입니다 — 연동되면 아래 "위임 유형 조합"·"재수임 이유 분석"이 채워집니다.</div>';
       document.getElementById('retainerCompanyNote').textContent = '';
       document.getElementById('retainerComboTable').innerHTML = '';
-      document.getElementById('retainerReasonTable').innerHTML = '';
+      document.getElementById('retainerReasonHeadline').innerHTML = '';
+      document.getElementById('retainerReasonKpis').innerHTML = '';
       document.getElementById('retainerReasonSub').textContent = '';
       document.getElementById('retainerReasonNote').textContent = '';
       return;
@@ -2438,31 +2440,52 @@ function initDashboard() {
     var repeatFiling = stageHours(repeatCases, 'filing_needed', 'filing_report'), oneFiling = stageHours(oneTimeCases, 'filing_needed', 'filing_report');
 
     var metrics = [
-      { label: '평균 계약금액(공급가액)', lowerIsBetterHint: false, repeat: mean(repeatAmt), base: mean(oneAmt), n: [repeatAmt.length, oneAmt.length], fmt: function (v) { return v == null ? '—' : Math.round(v).toLocaleString() + '원'; } },
-      { label: '커뮤니케이션 횟수(평균)', lowerIsBetterHint: false, repeat: mean(repeatComm), base: mean(oneComm), n: [repeatComm.length, oneComm.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '회'; } },
-      { label: '명세서 작성 소요일(사건개시→초안송부, 중앙값)', lowerIsBetterHint: true, repeat: medianOf(repeatDraft), base: medianOf(oneDraft), n: [repeatDraft.length, oneDraft.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '일'; } },
-      { label: '출원지시→출원 소요시간(중앙값)', lowerIsBetterHint: true, repeat: medianOf(repeatFiling), base: medianOf(oneFiling), n: [repeatFiling.length, oneFiling.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '시간'; } }
+      { label: '평균 계약금액(공급가액)', unitType: 'money', repeat: mean(repeatAmt), base: mean(oneAmt), n: [repeatAmt.length, oneAmt.length], fmt: function (v) { return v == null ? '—' : Math.round(v).toLocaleString() + '원'; } },
+      { label: '커뮤니케이션 횟수(평균)', unitType: 'count', repeat: mean(repeatComm), base: mean(oneComm), n: [repeatComm.length, oneComm.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '회'; } },
+      { label: '명세서 작성 소요일(사건개시→초안송부, 중앙값)', unitType: 'time', repeat: medianOf(repeatDraft), base: medianOf(oneDraft), n: [repeatDraft.length, oneDraft.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '일'; } },
+      { label: '출원지시→출원 소요시간(중앙값)', unitType: 'time', repeat: medianOf(repeatFiling), base: medianOf(oneFiling), n: [repeatFiling.length, oneFiling.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '시간'; } }
     ];
 
     var MIN_N = 5;
-    var body = metrics.map(function (m) {
-      var enough = m.n[0] >= MIN_N && m.n[1] >= MIN_N;
-      var diffText = '—';
-      if (enough && m.repeat != null && m.base != null && m.base !== 0) {
-        var diffPct = (m.repeat - m.base) / Math.abs(m.base) * 100;
-        var favorable = m.lowerIsBetterHint ? diffPct < 0 : null;
-        diffText = (diffPct >= 0 ? '+' : '') + diffPct.toFixed(0) + '%' + (favorable === true ? ' (재수임군이 더 빠름)' : favorable === false ? ' (재수임군이 더 느림)' : '');
+    var NOTABLE_PCT = 15;
+    metrics.forEach(function (m) {
+      m.enough = m.n[0] >= MIN_N && m.n[1] >= MIN_N;
+      m.diffPct = (m.enough && m.repeat != null && m.base != null && m.base !== 0) ? (m.repeat - m.base) / Math.abs(m.base) * 100 : null;
+    });
+
+    document.getElementById('retainerReasonKpis').innerHTML = metrics.map(function (m) {
+      var notable = m.diffPct != null && Math.abs(m.diffPct) >= NOTABLE_PCT;
+      var subHtml;
+      if (m.diffPct == null) {
+        subHtml = '<div class="kpi-sub">' + (m.enough ? '비교 불가' : '표본 부족 (n=' + m.n[0] + '/' + m.n[1] + ')') + '</div>';
+      } else {
+        var sign = m.diffPct >= 0 ? '▲' : '▼';
+        var cls = m.diffPct >= 0 ? 'up' : 'down';
+        var directionNote = m.unitType === 'time' ? (m.diffPct < 0 ? ' 더 빠름' : ' 더 느림') : '';
+        subHtml = '<div class="kpi-sub">1회성군 ' + m.fmt(m.base) + ' · <span class="kpi-delta ' + cls + '">' + sign + ' ' + Math.abs(m.diffPct).toFixed(0) + '%</span>' + directionNote + '</div>';
       }
-      return '<tr><td>' + m.label + '</td>' +
-        '<td class="num font-mono">' + m.fmt(m.repeat) + '<small> n=' + m.n[0] + '</small></td>' +
-        '<td class="num font-mono">' + m.fmt(m.base) + '<small> n=' + m.n[1] + '</small></td>' +
-        '<td class="num font-mono">' + (enough ? diffText : '표본 부족') + '</td></tr>';
+      return '<div class="kpi' + (notable ? ' highlight' : '') + '"><div class="kpi-label">' + m.label + '</div><div class="kpi-value font-mono">' + m.fmt(m.repeat) + '</div>' + subHtml + '</div>';
     }).join('');
-    document.getElementById('retainerReasonTable').innerHTML =
-      '<thead><tr><th>지표</th><th>재수임군(첫 사건)</th><th>1회성군</th><th>차이</th></tr></thead><tbody>' + body + '</tbody>';
-    document.getElementById('retainerReasonSub').textContent = '재수임 고객사 ' + repeatCases.length.toLocaleString() + '개 · 1회성 고객사 ' + oneTimeCases.length.toLocaleString() + '개 기준';
+
+    var ranked = metrics.filter(function (m) { return m.diffPct != null; }).sort(function (a, b) { return Math.abs(b.diffPct) - Math.abs(a.diffPct); });
+    function describe(m) {
+      var verb = m.unitType === 'money' ? (m.diffPct >= 0 ? '더 컸습니다' : '더 작았습니다')
+        : m.unitType === 'count' ? (m.diffPct >= 0 ? '더 많았습니다' : '더 적었습니다')
+        : (m.diffPct < 0 ? '더 빨랐습니다' : '더 느렸습니다');
+      return '\'' + m.label + '\'이(가) 1회성 고객사보다 <b>' + (m.diffPct >= 0 ? '+' : '') + m.diffPct.toFixed(0) + '%</b> ' + verb + ' (재수임군 ' + m.fmt(m.repeat) + ' vs 1회성군 ' + m.fmt(m.base) + ')';
+    }
+    var headlineHtml;
+    if (!ranked.length) {
+      headlineHtml = '<div class="status-insight-line">표본이 부족해 뚜렷한 차이를 판단하기 어렵습니다.</div>';
+    } else {
+      headlineHtml = '<div class="status-insight-line"><b>재수임 고객사는 첫 사건에서 ' + describe(ranked[0]) + '.</b></div>';
+      if (ranked.length > 1) headlineHtml += '<div class="status-insight-line">두 번째로 차이가 큰 지표: ' + describe(ranked[1]) + '.</div>';
+    }
+    document.getElementById('retainerReasonHeadline').innerHTML = headlineHtml;
+
+    document.getElementById('retainerReasonSub').textContent = '재수임 고객사 첫 사건 ' + repeatCases.length.toLocaleString() + '건 · 1회성 고객사 사건 ' + oneTimeCases.length.toLocaleString() + '건 비교';
     document.getElementById('retainerReasonNote').textContent =
-      '표본 ' + MIN_N + '건 미만인 지표는 "표본 부족"으로 표시합니다. 계약금액·커뮤니케이션 횟수는 방향성 해석을 자동으로 달지 않았습니다(낮다고 반드시 좋은 게 아니라서) — 표의 두 값을 직접 비교해서 판단해주세요. 더 세분화된 분석(예: 담당자별, 임계값 이상 비율)이 필요하면 말씀해주세요.';
+      '표본 ' + MIN_N + '건 미만인 지표는 "표본 부족"으로 표시합니다 · 계약금액·커뮤니케이션 횟수는 방향성(높다=좋다)을 자동 판단하지 않았으니 카드의 두 값을 직접 비교해서 해석해주세요 · 더 세분화된 분석(담당자별, 임계값 이상 비율 등)이 필요하면 말씀해주세요.';
   }
 
   function renderCompare() {
