@@ -2040,6 +2040,9 @@ function initDashboard() {
   }
 
   var IP_LABELS = { '특허': '특허', '상표': '상표', '디자인': '디자인', '기타': '기타' };
+  // cases.ip_type은 requests.category와 값 체계가 다르다(영어 enum: patent/trademark/design/dispute).
+  // 같은 IP_LABELS(한글 키)를 썼더니 매핑이 안 먹고 "patent"처럼 원본값이 그대로 노출되던 버그.
+  var CASE_IP_TYPE_LABELS = { patent: '특허', trademark: '상표', design: '디자인', dispute: '분쟁' };
   var CHANNEL_LABELS = { web: '웹', phone: '전화', referral: '추천', kakao: '카카오톡', email: '이메일', additional_retainer: '추가 위임', '': '(미기록)' };
 
   // 문의/계약/전환율을 그룹(채널·IP유형 등)별로 집계해 표로 보여줌 — 선택 기간에 반응
@@ -2389,7 +2392,7 @@ function initDashboard() {
     var comboCounts = {}, comboOrder = [];
     repeatCompanies.forEach(function (c) {
       var types = {};
-      c.cases.forEach(function (cs) { if (cs.ipType) types[IP_LABELS[cs.ipType] || cs.ipType] = true; });
+      c.cases.forEach(function (cs) { if (cs.ipType) types[CASE_IP_TYPE_LABELS[cs.ipType] || cs.ipType] = true; });
       var combo = Object.keys(types).sort().join(' + ') || '(미기록)';
       if (!(combo in comboCounts)) { comboCounts[combo] = 0; comboOrder.push(combo); }
       comboCounts[combo]++;
