@@ -295,8 +295,6 @@
   #cmpStageSpeedMatrix .rate-cell-value { width: auto; text-align: center; }
   tr.rate-best td { background: var(--accent-tint); }
   tr.rate-best .rate-cell-fill { background: var(--accent-ink); }
-  tr.rate-worst td { background: color-mix(in srgb, var(--brick) 7%, var(--surface)); }
-  tr.rate-worst .rate-cell-fill { background: var(--brick); }
   tr.rate-best td:first-child, tr.rate-worst td:first-child { font-weight: 700; }
   .status-drill-pager { display: flex; align-items: center; justify-content: center; margin-top: 14px; }
   .drill-th:hover { color: var(--accent-ink); }
@@ -2374,7 +2372,7 @@ function initDashboard() {
     var repeatShare = companies.length ? repeatCompanies.length / companies.length * 100 : 0;
     var kpiHtml = '';
     kpiHtml += '<div class="kpi"><div class="kpi-label">전체 고객사</div><div class="kpi-value font-mono">' + companies.length.toLocaleString() + '개</div></div>';
-    kpiHtml += '<div class="kpi highlight"><div class="kpi-label">재수임 고객사</div><div class="kpi-value font-mono">' + repeatCompanies.length.toLocaleString() + '개</div></div>';
+    kpiHtml += '<div class="kpi"><div class="kpi-label">재수임 고객사</div><div class="kpi-value font-mono">' + repeatCompanies.length.toLocaleString() + '개</div></div>';
     kpiHtml += '<div class="kpi"><div class="kpi-label">재수임 비중</div><div class="kpi-value font-mono">' + repeatShare.toFixed(1) + '%</div></div>';
     document.getElementById('retainerKpiGrid').innerHTML = kpiHtml;
 
@@ -2456,7 +2454,7 @@ function initDashboard() {
         var directionNote = m.unitType === 'time' ? (m.diffPct < 0 ? ' 더 빠름' : ' 더 느림') : '';
         subHtml = '<div class="kpi-sub">1회성군 ' + m.fmt(m.base) + ' · <span class="kpi-delta ' + cls + '">' + sign + ' ' + Math.abs(m.diffPct).toFixed(0) + '%</span>' + directionNote + '</div>';
       }
-      return '<div class="kpi' + (notable ? ' highlight' : '') + '"><div class="kpi-label">' + m.label + '</div><div class="kpi-value font-mono">' + m.fmt(m.repeat) + '</div>' + subHtml + '</div>';
+      return '<div class="kpi"><div class="kpi-label">' + m.label + '</div><div class="kpi-value font-mono">' + m.fmt(m.repeat) + '</div>' + subHtml + '</div>';
     }).join('');
 
     var ranked = metrics.filter(function (m) { return m.diffPct != null; }).sort(function (a, b) { return Math.abs(b.diffPct) - Math.abs(a.diffPct); });
