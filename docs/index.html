@@ -142,6 +142,7 @@
 
   /* kpi */
   .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  #retainerKpiGrid { gap: 30px; }
   .kpi-grid-sm { grid-template-columns: repeat(2, 1fr); }
   .kpi-grid-dash { grid-template-columns: repeat(5, 1fr); }
   .kpi-delta { font-weight: 700; }
@@ -188,8 +189,7 @@
   @media (max-width: 900px) {
     .compare-grid { grid-template-columns: 1fr; }
   }
-  .kpi { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; padding: 16px 16px 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-  .kpi.highlight { border-left-color: var(--highlight); }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 16px 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
   .kpi.highlight .kpi-value { color: var(--highlight-ink); }
   .kpi .kpi-label { font-size: 12px; color: var(--ink-2); font-weight: 600; display: flex; align-items: center; gap: 6px; }
   .kpi .kpi-label svg { flex: none; }
@@ -777,12 +777,9 @@
     </section>
 
     <div class="section-divider">재수임 이유 분석</div>
-    <p class="mini-note">재수임한 회사의 <b>첫 사건</b>과, 한 번만 맡기고 끝난 회사의 사건을 비교합니다 — 무엇이 달랐길래 다시 왔는가.</p>
     <section class="card">
       <div class="status-insights status-lead" id="retainerReasonHeadline"></div>
       <div class="kpi-grid" id="retainerReasonKpis" style="margin-top:4px;"></div>
-      <p class="mini-note" id="retainerReasonSub" style="margin-top:14px;"></p>
-      <p class="mini-note" id="retainerReasonNote" style="margin-top:6px;"></p>
     </section>
   </div>
 
@@ -2382,8 +2379,6 @@ function initDashboard() {
       document.getElementById('retainerComboTable').innerHTML = '';
       document.getElementById('retainerReasonHeadline').innerHTML = '';
       document.getElementById('retainerReasonKpis').innerHTML = '';
-      document.getElementById('retainerReasonSub').textContent = '';
-      document.getElementById('retainerReasonNote').textContent = '';
       return;
     }
 
@@ -2482,20 +2477,16 @@ function initDashboard() {
       var verb = m.unitType === 'money' ? (m.diffPct >= 0 ? '더 컸습니다' : '더 작았습니다')
         : m.unitType === 'count' ? (m.diffPct >= 0 ? '더 많았습니다' : '더 적었습니다')
         : (m.diffPct < 0 ? '더 빨랐습니다' : '더 느렸습니다');
-      return '\'' + m.label + '\'이(가) 1회성 고객사보다 <b>' + (m.diffPct >= 0 ? '+' : '') + m.diffPct.toFixed(0) + '%</b> ' + verb + ' (재수임군 ' + m.fmt(m.repeat) + ' vs 1회성군 ' + m.fmt(m.base) + ')';
+      return '\'' + m.label + '\'이(가) 1회성 고객사보다 <b>' + (m.diffPct >= 0 ? '+' : '') + m.diffPct.toFixed(0) + '%</b> ' + verb;
     }
     var headlineHtml;
     if (!ranked.length) {
       headlineHtml = '<div class="status-insight-line">표본이 부족해 뚜렷한 차이를 판단하기 어렵습니다.</div>';
     } else {
       headlineHtml = '<div class="status-insight-line"><b>재수임 고객사는 첫 사건에서 ' + describe(ranked[0]) + '.</b></div>';
-      if (ranked.length > 1) headlineHtml += '<div class="status-insight-line">두 번째로 차이가 큰 지표: ' + describe(ranked[1]) + '.</div>';
+      if (ranked.length > 1) headlineHtml += '<div class="status-insight-line">두 번째: ' + describe(ranked[1]) + '.</div>';
     }
     document.getElementById('retainerReasonHeadline').innerHTML = headlineHtml;
-
-    document.getElementById('retainerReasonSub').textContent = '재수임 고객사 첫 사건 ' + repeatCases.length.toLocaleString() + '건 · 1회성 고객사 사건 ' + oneTimeCases.length.toLocaleString() + '건 비교';
-    document.getElementById('retainerReasonNote').textContent =
-      '표본 ' + MIN_N + '건 미만인 지표는 "표본 부족"으로 표시합니다 · 계약금액·커뮤니케이션 횟수는 방향성(높다=좋다)을 자동 판단하지 않았으니 카드의 두 값을 직접 비교해서 해석해주세요 · 더 세분화된 분석(담당자별, 임계값 이상 비율 등)이 필요하면 말씀해주세요.';
   }
 
   function renderCompare() {
