@@ -28,8 +28,8 @@
     --accent: #7C97C0; --accent-ink: #CBD7E8; --accent-tint: #1D2733;
     --highlight: #9C8FB3; --highlight-ink: #DCD4E8; --highlight-tint: #241F2E;
     --warn: #E0A94A; --warn-ink: #F5DBA6; --warn-tint: #362A13; --brick: #D9776C;
-    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
-    --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
+    --series-1: #6E93BE; --series-2: #D89A72; --series-3: #7CBFA0; --series-4: #D9BC6E;
+    --series-5: #D9A0B6; --series-6: #86AD86; --series-7: #9686BE; --series-8: #CC8A87;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
   }
   :root[data-theme="light"] {
@@ -38,8 +38,8 @@
     --accent: #3E5C8A; --accent-ink: #253E64; --accent-tint: #EEF2F8;
     --highlight: #7C6A9C; --highlight-ink: #4F4370; --highlight-tint: #F1EEF6;
     --warn: #B7791F; --warn-ink: #6B4712; --warn-tint: #FBF1DF; --brick: #B2483C;
-    --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
-    --series-5: #e87ba4; --series-6: #008300; --series-7: #4a3aa7; --series-8: #e34948;
+    --series-1: #4E76A8; --series-2: #C9784F; --series-3: #4E9E82; --series-4: #C99A3D;
+    --series-5: #C77E97; --series-6: #5C8A5C; --series-7: #6E5D96; --series-8: #B25C58;
     --shadow: 0 1px 2px rgba(20,26,36,.06), 0 8px 24px -12px rgba(20,26,36,.12);
   }
 
@@ -191,15 +191,15 @@
   @media (max-width: 900px) {
     .compare-grid { grid-template-columns: 1fr; }
   }
-  .kpi { background: var(--surface); border-radius: 16px; padding: 18px 18px 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-  .kpi.highlight .kpi-value { color: var(--highlight-ink); }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px 18px 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .kpi.highlight { background: var(--accent-tint); }
   .kpi .kpi-label { font-size: 12px; color: var(--ink-2); font-weight: 600; display: flex; align-items: center; gap: 6px; }
   .kpi .kpi-label svg { flex: none; color: var(--accent); }
-  .kpi.highlight .kpi-label svg { color: var(--highlight); }
+  .kpi.highlight .kpi-label svg { color: var(--accent-ink); }
   .kpi .kpi-value { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); }
   .kpi .kpi-sub { font-size: 12.5px; color: var(--ink-3); }
 
-  .card { background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); padding: 22px 24px 20px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); padding: 22px 24px 20px; }
   .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
   .card-title { font-size: 15px; font-weight: 700; }
   .card-title-sub { font-size: 12.5px; color: var(--ink-3); }
@@ -221,7 +221,7 @@
   .bars.dense .bar { width: 78%; max-width: none; border-radius: 2px 2px 1px 1px; }
   .bar:hover { outline: 2px solid var(--accent-ink); }
   .bar-col.muted .bar { background: repeating-linear-gradient(135deg, var(--ink-3) 0 4px, transparent 4px 9px); opacity: 0.55; border: 1px dashed var(--ink-3); }
-  .bar-col.best .bar { background: var(--highlight); box-shadow: 0 0 0 2px var(--highlight-tint), 0 0 0 3px var(--highlight); }
+  .bar-col.best .bar { background: var(--accent-ink); box-shadow: 0 0 0 2px var(--accent-tint), 0 0 0 3px var(--accent-ink); }
   .bar-col.worst .bar { background: var(--brick); }
   .bar-value { position: absolute; top: -19px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
   .bar-col.muted .bar-value { color: var(--ink-2); font-weight: 600; }
@@ -245,7 +245,7 @@
     content: ''; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px;
     border-radius: 50%; background: var(--accent); border: 2px solid var(--surface);
   }
-  .line-point:hover::before, .line-point:focus::before { background: var(--highlight); }
+  .line-point:hover::before, .line-point:focus::before { background: var(--accent-ink); }
   .line-point .tooltip { bottom: calc(100% + 2px); left: 50%; }
   .line-point:hover .tooltip, .line-point:focus .tooltip { opacity: 1; transform: translateX(-50%) translateY(0); }
   .line-point:focus { outline: none; }
@@ -295,6 +295,8 @@
   #cmpStageSpeedMatrix .rate-cell-value { width: auto; text-align: center; }
   tr.rate-best td { background: var(--accent-tint); }
   tr.rate-best .rate-cell-fill { background: var(--accent-ink); }
+  tr.rate-worst td { background: var(--surface-2); }
+  tr.rate-worst .rate-cell-fill { background: var(--ink-3); }
   tr.rate-best td:first-child, tr.rate-worst td:first-child { font-weight: 700; }
   .status-drill-pager { display: flex; align-items: center; justify-content: center; margin-top: 14px; }
   .drill-th:hover { color: var(--accent-ink); }
@@ -461,11 +463,11 @@
   .status-phase-name { font-size: 13px; font-weight: 600; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .status-phase-track { position: relative; height: 20px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
   .status-phase-fill { position: absolute; top: 0; left: 0; height: 100%; background: var(--accent); border-radius: 5px; max-width: 100%; }
-  .status-phase-row.top .status-phase-fill { background: var(--highlight); }
+  .status-phase-row.top .status-phase-fill { background: var(--accent-ink); }
   .status-phase-count-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
   .status-phase-count { font-size: 13px; font-weight: 700; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .status-phase-age { font-size: 11px; font-weight: 600; color: var(--ink-3); white-space: nowrap; }
-  .status-phase-top-note { font-size: 12.5px; color: var(--highlight-ink); font-weight: 600; margin-top: 10px; }
+  .status-phase-top-note { font-size: 12.5px; color: var(--accent-ink); font-weight: 600; margin-top: 10px; }
 
   .status-stall-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
   .status-stall-card { border: 1px solid var(--border); border-radius: 10px; padding: 13px 14px; display: flex; flex-direction: column; gap: 7px; }
@@ -773,6 +775,11 @@
     <section class="card">
       <div class="status-insights status-lead" id="retainerReasonHeadline"></div>
       <div class="kpi-grid" id="retainerReasonKpis" style="margin-top:4px;"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><div><div class="card-title">담당자별 재수임 비중</div><div class="card-title-sub">첫 사건 담당자 기준 · 그 고객사가 나중에 재수임했는지</div></div></div>
+      <div class="table-scroll"><table id="retainerAssigneeTable"></table></div>
     </section>
   </div>
 
@@ -2364,6 +2371,7 @@ function initDashboard() {
       document.getElementById('retainerComboTable').innerHTML = '';
       document.getElementById('retainerReasonHeadline').innerHTML = '';
       document.getElementById('retainerReasonKpis').innerHTML = '';
+      document.getElementById('retainerAssigneeTable').innerHTML = '';
       return;
     }
 
@@ -2396,6 +2404,7 @@ function initDashboard() {
     }
 
     renderRetainerReasonAnalysis(repeatCompanies, oneTimeCompanies);
+    renderRetainerAssigneeTable(repeatCompanies, oneTimeCompanies);
   }
 
   // 재수임 이유 분석 — "재수임한 회사의 첫 사건"과 "한 번만 맡기고 끝난 회사의 사건"을 비교해
@@ -2424,16 +2433,27 @@ function initDashboard() {
       }).filter(function (v) { return v != null; });
     }
 
+    function pctOf(cases, predicate) {
+      var n = cases.length, hit = cases.filter(predicate).length;
+      return { n: n, rate: n ? hit / n * 100 : null };
+    }
+
     var repeatAmt = nums(repeatCases, CASE_IDX.contractAmount), oneAmt = nums(oneTimeCases, CASE_IDX.contractAmount);
     var repeatComm = nums(repeatCases, CASE_IDX.commCount), oneComm = nums(oneTimeCases, CASE_IDX.commCount);
     var repeatDraft = stageDays(repeatCases, 'case_opened', 'draft_delivered'), oneDraft = stageDays(oneTimeCases, 'case_opened', 'draft_delivered');
     var repeatFiling = stageHours(repeatCases, 'filing_needed', 'filing_report'), oneFiling = stageHours(oneTimeCases, 'filing_needed', 'filing_report');
+    var repeatReg = pctOf(repeatCases, function (c) { return !!stageGetter('filing_report')(c); });
+    var oneReg = pctOf(oneTimeCases, function (c) { return !!stageGetter('filing_report')(c); });
+    var repeatPatent = pctOf(repeatCases, function (c) { return c[CASE_IDX.ipType] === 'patent'; });
+    var onePatent = pctOf(oneTimeCases, function (c) { return c[CASE_IDX.ipType] === 'patent'; });
 
     var metrics = [
       { label: '평균 계약금액(공급가액)', unitType: 'money', repeat: mean(repeatAmt), base: mean(oneAmt), n: [repeatAmt.length, oneAmt.length], fmt: function (v) { return v == null ? '—' : Math.round(v).toLocaleString() + '원'; } },
       { label: '커뮤니케이션 횟수(평균)', unitType: 'count', repeat: mean(repeatComm), base: mean(oneComm), n: [repeatComm.length, oneComm.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '회'; } },
       { label: '명세서 작성 소요일(사건개시→초안송부, 중앙값)', unitType: 'time', repeat: medianOf(repeatDraft), base: medianOf(oneDraft), n: [repeatDraft.length, oneDraft.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '일'; } },
-      { label: '출원지시→출원 소요시간(중앙값)', unitType: 'time', repeat: medianOf(repeatFiling), base: medianOf(oneFiling), n: [repeatFiling.length, oneFiling.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '시간'; } }
+      { label: '출원지시→출원 소요시간(중앙값)', unitType: 'time', repeat: medianOf(repeatFiling), base: medianOf(oneFiling), n: [repeatFiling.length, oneFiling.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '시간'; } },
+      { label: '출원 완료율(첫 사건 기준)', unitType: 'rate', repeat: repeatReg.rate, base: oneReg.rate, n: [repeatReg.n, oneReg.n], fmt: function (v) { return v == null ? '—' : v.toFixed(0) + '%'; } },
+      { label: '특허 비중(첫 사건 기준)', unitType: 'rate', repeat: repeatPatent.rate, base: onePatent.rate, n: [repeatPatent.n, onePatent.n], fmt: function (v) { return v == null ? '—' : v.toFixed(0) + '%'; } }
     ];
 
     var MIN_N = 5;
@@ -2451,7 +2471,7 @@ function initDashboard() {
       } else {
         var sign = m.diffPct >= 0 ? '▲' : '▼';
         var cls = m.diffPct >= 0 ? 'up' : 'down';
-        var directionNote = m.unitType === 'time' ? (m.diffPct < 0 ? ' 더 빠름' : ' 더 느림') : '';
+        var directionNote = m.unitType === 'time' ? (m.diffPct < 0 ? ' 더 빠름' : ' 더 느림') : (m.unitType === 'rate' ? (m.diffPct >= 0 ? ' 더 높음' : ' 더 낮음') : '');
         subHtml = '<div class="kpi-sub">1회성군 ' + m.fmt(m.base) + ' · <span class="kpi-delta ' + cls + '">' + sign + ' ' + Math.abs(m.diffPct).toFixed(0) + '%</span>' + directionNote + '</div>';
       }
       return '<div class="kpi"><div class="kpi-label">' + m.label + '</div><div class="kpi-value font-mono">' + m.fmt(m.repeat) + '</div>' + subHtml + '</div>';
@@ -2461,6 +2481,7 @@ function initDashboard() {
     function describe(m) {
       var verb = m.unitType === 'money' ? (m.diffPct >= 0 ? '더 컸습니다' : '더 작았습니다')
         : m.unitType === 'count' ? (m.diffPct >= 0 ? '더 많았습니다' : '더 적었습니다')
+        : m.unitType === 'rate' ? (m.diffPct >= 0 ? '더 높았습니다' : '더 낮았습니다')
         : (m.diffPct < 0 ? '더 빨랐습니다' : '더 느렸습니다');
       return '\'' + m.label + '\'이(가) 1회성 고객사보다 <b>' + (m.diffPct >= 0 ? '+' : '') + m.diffPct.toFixed(0) + '%</b> ' + verb;
     }
@@ -2472,6 +2493,32 @@ function initDashboard() {
       if (ranked.length > 1) headlineHtml += '<div class="status-insight-line">두 번째: ' + describe(ranked[1]) + '.</div>';
     }
     document.getElementById('retainerReasonHeadline').innerHTML = headlineHtml;
+  }
+
+  function renderRetainerAssigneeTable(repeatCompanies, oneTimeCompanies) {
+    var counts = {};
+    function bump(companies, isRepeat) {
+      companies.forEach(function (c) {
+        var a = c.cases[0].row[CASE_IDX.assignee] || '';
+        if (!a) return;
+        if (!counts[a]) counts[a] = { total: 0, repeat: 0 };
+        counts[a].total++;
+        if (isRepeat) counts[a].repeat++;
+      });
+    }
+    bump(repeatCompanies, true);
+    bump(oneTimeCompanies, false);
+    var keys = Object.keys(counts).filter(function (k) { return counts[k].total >= 5; })
+      .sort(function (a, b) { return counts[b].total - counts[a].total; });
+    var el = document.getElementById('retainerAssigneeTable');
+    if (!keys.length) { el.innerHTML = '<div class="empty-state">데이터가 없습니다(고객사 5개 미만 담당자는 표본 부족으로 생략).</div>'; return; }
+    var body = keys.map(function (k) {
+      var c = counts[k], rate = c.total ? c.repeat / c.total * 100 : 0;
+      return '<tr><td>' + escapeHtml(assigneeName(k)) + '</td><td class="num font-mono">' + c.total.toLocaleString() + '</td>' +
+        '<td class="num font-mono">' + c.repeat.toLocaleString() + '</td><td>' + rateCellHtml(rate, 100) + '</td></tr>';
+    }).join('');
+    el.classList.add('rate-table');
+    el.innerHTML = '<thead><tr><th>담당자</th><th>고객사</th><th>재수임</th><th>재수임 비중</th></tr></thead><tbody>' + body + '</tbody>';
   }
 
   function renderCompare() {
