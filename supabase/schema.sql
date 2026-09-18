@@ -60,6 +60,17 @@ create table if not exists case_stage_events (
 );
 create index if not exists idx_case_stage_events_case_id on case_stage_events (case_id);
 
+-- 리드(요청) 단계 이동 이력. 전용 이력 테이블이 DB에 없어서, 담당자가 communications.body에
+-- 남기는 "의뢰 단계 X → Y" 텍스트를 sync/neon_export.sql에서 파싱해 채운다.
+create table if not exists request_stage_events (
+  id bigserial primary key,
+  request_id text not null,
+  from_stage text,
+  to_stage text not null,
+  changed_at timestamptz not null
+);
+create index if not exists idx_request_stage_events_request_id on request_stage_events (request_id);
+
 -- =========================================================
 -- 2. Row Level Security — 로그인한 사용자만 조회 가능, 쓰기는 아무도 못 함
 --    (데이터 갱신은 GitHub Actions가 service_role 키로 하며, service_role은 RLS를 무시함)
@@ -68,6 +79,7 @@ create index if not exists idx_case_stage_events_case_id on case_stage_events (c
 alter table funnel_rows enable row level security;
 alter table case_rows enable row level security;
 alter table case_stage_events enable row level security;
+alter table request_stage_events enable row level security;
 
 drop policy if exists "authenticated read funnel_rows" on funnel_rows;
 create policy "authenticated read funnel_rows" on funnel_rows
@@ -79,6 +91,10 @@ create policy "authenticated read case_rows" on case_rows
 
 drop policy if exists "authenticated read case_stage_events" on case_stage_events;
 create policy "authenticated read case_stage_events" on case_stage_events
+  for select using (auth.role() = 'authenticated');
+
+drop policy if exists "authenticated read request_stage_events" on request_stage_events;
+create policy "authenticated read request_stage_events" on request_stage_events
   for select using (auth.role() = 'authenticated');
 
 -- insert/update/delete 정책을 아예 만들지 않았으므로, anon/authenticated 키로는

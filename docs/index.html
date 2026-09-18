@@ -804,6 +804,18 @@
       </div>
     </section>
 
+    <div class="section-divider">리드 단계별 체류일수 <span class="badge-fixed">전체 기간 고정</span></div>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">단계별 체류일수</div>
+          <div class="card-title-sub">communications 기록에 남은 "의뢰 단계 X → Y" 이력 기준 · 이동건수만큼만 체류일 산정(현재 그 단계에 머무는 중인 건은 제외)</div>
+        </div>
+      </div>
+      <div class="table-scroll"><table id="tb-reqstage"></table></div>
+    </section>
+
     <div class="section-divider">추이 · 소요일 <span class="badge-reactive">선택 기간 반응</span></div>
 
     <section class="kpi-grid kpi-grid-sm" id="kpiGrid"></section>
@@ -1007,6 +1019,7 @@ function initDashboard() {
   var REQ = window.FUNNEL_ROWS || [];
   var CASES = window.CASE_ROWS || [];
   var STAGE_EVENTS = window.CASE_STAGE_EVENTS || [];
+  var REQUEST_STAGE_EVENTS = window.REQUEST_STAGE_EVENTS || [];
 
   var stageByCase = {};
   STAGE_EVENTS.forEach(function (e) {
@@ -1495,6 +1508,66 @@ function initDashboard() {
     html += '<div class="kpi"><div class="kpi-label">문의 → 계약 중앙 소요일</div><div class="kpi-value font-mono">' + (medContract != null ? medContract.toFixed(1) + '일' : '—') + '</div><div class="kpi-sub">계약 ' + contractDays.length.toLocaleString() + '건 기준</div></div>';
     el.innerHTML = html;
     sub.textContent = periodNote;
+  }
+
+  // 리드 단계 이동 이력은 전용 테이블이 없지만, communications.body에 담당자가
+  // "의뢰 단계 new → qualified" 형태로 기록해두고 있어(sync/neon_export.sql의
+  // request_stage_events 쿼리가 이 텍스트를 파싱) 실제 단계별 체류일을 계산할 수 있다.
+  // 기간/담당자 필터와 무관하게 전체 기간 고정 집계이므로 render()가 아니라 초기 1회만 호출한다.
+  function computeStageDwell() {
+    var byReq = {};
+    REQUEST_STAGE_EVENTS.forEach(function (e) {
+      var rid = e[0];
+      (byReq[rid] = byReq[rid] || []).push(e);
+    });
+    var inquiryByReq = {};
+    REQ.forEach(function (r) { inquiryByReq[r[REQ_IDX.id]] = r[REQ_IDX.inquiry]; });
+
+    var stats = {};
+    function bump(stage) {
+      if (!stats[stage]) stats[stage] = { entered: 0, moved: 0, dwellDays: [] };
+      return stats[stage];
+    }
+
+    Object.keys(byReq).forEach(function (rid) {
+      var evs = byReq[rid].slice().sort(function (a, b) { return new Date(a[3]) - new Date(b[3]); });
+      var inqAt = inquiryByReq[rid];
+      var prevTime = inqAt ? new Date(inqAt) : null;
+      var prevStage = 'new';
+      evs.forEach(function (e) {
+        var toStage = e[2], at = new Date(e[3]);
+        var s = bump(prevStage);
+        s.entered++;
+        if (prevTime) {
+          var d = (at.getTime() - prevTime.getTime()) / 86400000;
+          if (d >= 0) { s.moved++; s.dwellDays.push(d); }
+        }
+        prevStage = toStage;
+        prevTime = at;
+      });
+      // 아직 다음 단계로 안 넘어간 마지막 단계는 진입만 집계하고 체류일은 미산정(현재 진행 중)
+      bump(prevStage).entered++;
+    });
+    return stats;
+  }
+
+  function renderRequestStageDwell() {
+    var tbl = document.getElementById('tb-reqstage');
+    if (!tbl) return;
+    var stats = computeStageDwell();
+    var keys = Object.keys(stats).sort(function (a, b) { return stats[b].entered - stats[a].entered; });
+    if (!keys.length) { tbl.innerHTML = '<tbody><tr><td class="empty-state" colspan="5">데이터가 없습니다.</td></tr></tbody>'; return; }
+    var thead = '<thead><tr><th>단계</th><th>진입건수</th><th>이동건수</th><th>평균 체류일</th><th>중앙 체류일</th></tr></thead>';
+    var tbody = '<tbody>' + keys.map(function (k) {
+      var s = stats[k];
+      var avg = avgOf(s.dwellDays), med = medianOf(s.dwellDays);
+      return '<tr><td>' + (STAGE_LABELS_REQ[k] || k) + '</td>' +
+        '<td class="num font-mono">' + s.entered.toLocaleString() + '</td>' +
+        '<td class="num font-mono">' + s.moved.toLocaleString() + '</td>' +
+        '<td class="num font-mono">' + (avg != null ? avg.toFixed(1) + '일' : '—') + '</td>' +
+        '<td class="num font-mono">' + (med != null ? med.toFixed(1) + '일' : '—') + '</td></tr>';
+    }).join('') + '</tbody>';
+    tbl.innerHTML = thead + tbody;
   }
 
   function monthStart(d) { return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)); }
@@ -3238,6 +3311,7 @@ function initDashboard() {
   refreshDateInputs();
   renderDashboard();
   renderStatsOverview();
+  renderRequestStageDwell();
 }
 </script>
 
@@ -3312,6 +3386,7 @@ function initDashboard() {
   var FUNNEL_COLS = ['id', 'inquiry_at', 'category', 'channel', 'phase', 'stage', 'stage_updated_at', 'first_contact_at', 'first_quote_at', 'first_contract_at', 'unqualified_reason', 'source_platform', 'company_id', 'source_medium', 'source_creative'];
   var CASE_COLS = ['id', 'request_id', 'inquiry_at', 'first_contact_at', 'first_quote_at', 'contract_date', 'commission_date', 'filing_official_date', 'registration_official_date', 'ip_type', 'category', 'assignee_id', 'contract_amount', 'comm_count'];
   var STAGE_COLS = ['case_id', 'stage', 'changed_at'];
+  var REQUEST_STAGE_COLS = ['request_id', 'from_stage', 'to_stage', 'changed_at'];
 
   async function loadDataAndStart() {
     showLoading('데이터를 불러오는 중...');
@@ -3319,9 +3394,11 @@ function initDashboard() {
       var funnel = await fetchAll('funnel_rows', FUNNEL_COLS, 'id');
       var cases = await fetchAll('case_rows', CASE_COLS, 'id');
       var stages = await fetchAll('case_stage_events', STAGE_COLS, 'id');
+      var reqStages = await fetchAll('request_stage_events', REQUEST_STAGE_COLS, 'id');
       window.FUNNEL_ROWS = toArrayRows(funnel, FUNNEL_COLS);
       window.CASE_ROWS = toArrayRows(cases, CASE_COLS);
       window.CASE_STAGE_EVENTS = toArrayRows(stages, STAGE_COLS);
+      window.REQUEST_STAGE_EVENTS = toArrayRows(reqStages, REQUEST_STAGE_COLS);
       showDashboard();
       initDashboard();
     } catch (err) {

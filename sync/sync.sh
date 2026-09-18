@@ -17,6 +17,18 @@ alter table funnel_rows add column if not exists source_medium text;
 alter table funnel_rows add column if not exists source_creative text;
 alter table case_rows add column if not exists contract_amount numeric;
 alter table case_rows add column if not exists comm_count integer;
+create table if not exists request_stage_events (
+  id bigserial primary key,
+  request_id text not null,
+  from_stage text,
+  to_stage text not null,
+  changed_at timestamptz not null
+);
+create index if not exists idx_request_stage_events_request_id on request_stage_events (request_id);
+alter table request_stage_events enable row level security;
+drop policy if exists "authenticated read request_stage_events" on request_stage_events;
+create policy "authenticated read request_stage_events" on request_stage_events
+  for select using (auth.role() = 'authenticated');
 SQL
 
 # neon_export.sql에서 "-- @query: <name>" 블록 하나를 뽑아 순수 SQL만 반환
@@ -62,6 +74,10 @@ sync_table "case_rows" "case_rows" \
 sync_table "case_stage_events" "case_stage_events" \
   "case_id, stage, changed_at" \
   "case_id text, stage text, changed_at timestamptz"
+
+sync_table "request_stage_events" "request_stage_events" \
+  "request_id, from_stage, to_stage, changed_at" \
+  "request_id text, from_stage text, to_stage text, changed_at timestamptz"
 
 psql "$SUPABASE_DB_URL" -t -A -c "select '유입 플랫폼(utm_source) 집계: 전체값=' || count(source_platform) || ', 소재(utm_term/content) 있음=' || count(source_creative) from funnel_rows;"
 

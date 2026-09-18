@@ -94,3 +94,20 @@ select coalesce(json_agg(row_to_json(t)), '[]'::json) from (
   where to_stage is not null and deleted_at is null
   group by case_id, to_stage
 ) t;
+
+-- @query: request_stage_events
+-- 리드에는 case_stage_histories 같은 전용 이력 테이블이 없다. 대신 담당자가 단계를 바꿀 때마다
+-- communications.body에 "의뢰 단계 new → qualified" 형태의 한 줄짜리 메모를 남기고 있어(2026-09-18
+-- psql로 실측: (?n) 멀티라인 매치 기준 3,504건 / 리드 2,139건 커버) 이를 파싱해서 이력을 복원한다.
+select coalesce(json_agg(row_to_json(t)), '[]'::json) from (
+  select
+    c.request_id,
+    substring(c.body from '(?n)^의뢰 단계 (\S+) →') as from_stage,
+    substring(c.body from '(?n)→ (\S+)$') as to_stage,
+    c.occurred_at as changed_at
+  from public.communications c
+  where c.body ~ '(?n)^의뢰 단계 \S+ → \S+$'
+    and c.request_id is not null
+    and c.deleted_at is null
+  order by c.request_id, c.occurred_at
+) t;
