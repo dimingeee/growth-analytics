@@ -776,11 +776,6 @@
       <div class="status-insights status-lead" id="retainerReasonHeadline"></div>
       <div class="kpi-grid" id="retainerReasonKpis" style="margin-top:4px;"></div>
     </section>
-
-    <section class="card">
-      <div class="card-head"><div><div class="card-title">담당자별 재수임 비중</div><div class="card-title-sub">첫 사건 담당자 기준 · 그 고객사가 나중에 재수임했는지</div></div></div>
-      <div class="table-scroll"><table id="retainerAssigneeTable"></table></div>
-    </section>
   </div>
 
   <div id="statsContent" style="display:none;">
@@ -2371,7 +2366,6 @@ function initDashboard() {
       document.getElementById('retainerComboTable').innerHTML = '';
       document.getElementById('retainerReasonHeadline').innerHTML = '';
       document.getElementById('retainerReasonKpis').innerHTML = '';
-      document.getElementById('retainerAssigneeTable').innerHTML = '';
       return;
     }
 
@@ -2404,7 +2398,6 @@ function initDashboard() {
     }
 
     renderRetainerReasonAnalysis(repeatCompanies, oneTimeCompanies);
-    renderRetainerAssigneeTable(repeatCompanies, oneTimeCompanies);
   }
 
   // 재수임 이유 분석 — "재수임한 회사의 첫 사건"과 "한 번만 맡기고 끝난 회사의 사건"을 비교해
@@ -2446,12 +2439,22 @@ function initDashboard() {
     var oneReg = pctOf(oneTimeCases, function (c) { return !!stageGetter('filing_report')(c); });
     var repeatPatent = pctOf(repeatCases, function (c) { return c[CASE_IDX.ipType] === 'patent'; });
     var onePatent = pctOf(oneTimeCases, function (c) { return c[CASE_IDX.ipType] === 'patent'; });
+    function fieldDays(cases, fromIdx, toIdx) {
+      return cases.map(function (c) {
+        var a = c[fromIdx], b = c[toIdx];
+        if (!a || !b) return null;
+        var d = daysBetween(parseISO(a), parseISO(b));
+        return d >= 0 ? d : null;
+      }).filter(function (v) { return v != null; });
+    }
+    var repeatQuote = fieldDays(repeatCases, CASE_IDX.inquiry, CASE_IDX.quote), oneQuote = fieldDays(oneTimeCases, CASE_IDX.inquiry, CASE_IDX.quote);
 
     var metrics = [
       { label: '평균 계약금액(공급가액)', unitType: 'money', repeat: mean(repeatAmt), base: mean(oneAmt), n: [repeatAmt.length, oneAmt.length], fmt: function (v) { return v == null ? '—' : Math.round(v).toLocaleString() + '원'; } },
       { label: '커뮤니케이션 횟수(평균)', unitType: 'count', repeat: mean(repeatComm), base: mean(oneComm), n: [repeatComm.length, oneComm.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '회'; } },
       { label: '명세서 작성 소요일(사건개시→초안송부, 중앙값)', unitType: 'time', repeat: medianOf(repeatDraft), base: medianOf(oneDraft), n: [repeatDraft.length, oneDraft.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '일'; } },
       { label: '출원지시→출원 소요시간(중앙값)', unitType: 'time', repeat: medianOf(repeatFiling), base: medianOf(oneFiling), n: [repeatFiling.length, oneFiling.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '시간'; } },
+      { label: '문의 접수→첫 견적 소요일(중앙값)', unitType: 'time', repeat: medianOf(repeatQuote), base: medianOf(oneQuote), n: [repeatQuote.length, oneQuote.length], fmt: function (v) { return v == null ? '—' : v.toFixed(1) + '일'; } },
       { label: '출원 완료율(첫 사건 기준)', unitType: 'rate', repeat: repeatReg.rate, base: oneReg.rate, n: [repeatReg.n, oneReg.n], fmt: function (v) { return v == null ? '—' : v.toFixed(0) + '%'; } },
       { label: '특허 비중(첫 사건 기준)', unitType: 'rate', repeat: repeatPatent.rate, base: onePatent.rate, n: [repeatPatent.n, onePatent.n], fmt: function (v) { return v == null ? '—' : v.toFixed(0) + '%'; } }
     ];
@@ -2495,31 +2498,6 @@ function initDashboard() {
     document.getElementById('retainerReasonHeadline').innerHTML = headlineHtml;
   }
 
-  function renderRetainerAssigneeTable(repeatCompanies, oneTimeCompanies) {
-    var counts = {};
-    function bump(companies, isRepeat) {
-      companies.forEach(function (c) {
-        var a = c.cases[0].row[CASE_IDX.assignee] || '';
-        if (!a) return;
-        if (!counts[a]) counts[a] = { total: 0, repeat: 0 };
-        counts[a].total++;
-        if (isRepeat) counts[a].repeat++;
-      });
-    }
-    bump(repeatCompanies, true);
-    bump(oneTimeCompanies, false);
-    var keys = Object.keys(counts).filter(function (k) { return counts[k].total >= 5; })
-      .sort(function (a, b) { return counts[b].total - counts[a].total; });
-    var el = document.getElementById('retainerAssigneeTable');
-    if (!keys.length) { el.innerHTML = '<div class="empty-state">데이터가 없습니다(고객사 5개 미만 담당자는 표본 부족으로 생략).</div>'; return; }
-    var body = keys.map(function (k) {
-      var c = counts[k], rate = c.total ? c.repeat / c.total * 100 : 0;
-      return '<tr><td>' + escapeHtml(assigneeName(k)) + '</td><td class="num font-mono">' + c.total.toLocaleString() + '</td>' +
-        '<td class="num font-mono">' + c.repeat.toLocaleString() + '</td><td>' + rateCellHtml(rate, 100) + '</td></tr>';
-    }).join('');
-    el.classList.add('rate-table');
-    el.innerHTML = '<thead><tr><th>담당자</th><th>고객사</th><th>재수임</th><th>재수임 비중</th></tr></thead><tbody>' + body + '</tbody>';
-  }
 
   function renderCompare() {
     var startM = findMilestone(state.startKey);
