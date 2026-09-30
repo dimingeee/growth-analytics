@@ -71,6 +71,15 @@ create table if not exists request_stage_events (
 );
 create index if not exists idx_request_stage_events_request_id on request_stage_events (request_id);
 
+-- Meta 광고 계정(베이스 특허법률사무소, ad_account 1410802980341574) 월별 성과.
+-- Neon이 아니라 sync/sync.sh가 Meta Graph API에서 직접 긁어온다(META_ACCESS_TOKEN 시크릿 필요).
+create table if not exists ad_monthly_metrics (
+  month date primary key,
+  impressions bigint,
+  clicks bigint,
+  spend numeric
+);
+
 -- =========================================================
 -- 2. Row Level Security — 로그인한 사용자만 조회 가능, 쓰기는 아무도 못 함
 --    (데이터 갱신은 GitHub Actions가 service_role 키로 하며, service_role은 RLS를 무시함)
@@ -80,6 +89,7 @@ alter table funnel_rows enable row level security;
 alter table case_rows enable row level security;
 alter table case_stage_events enable row level security;
 alter table request_stage_events enable row level security;
+alter table ad_monthly_metrics enable row level security;
 
 drop policy if exists "authenticated read funnel_rows" on funnel_rows;
 create policy "authenticated read funnel_rows" on funnel_rows
@@ -95,6 +105,10 @@ create policy "authenticated read case_stage_events" on case_stage_events
 
 drop policy if exists "authenticated read request_stage_events" on request_stage_events;
 create policy "authenticated read request_stage_events" on request_stage_events
+  for select using (auth.role() = 'authenticated');
+
+drop policy if exists "authenticated read ad_monthly_metrics" on ad_monthly_metrics;
+create policy "authenticated read ad_monthly_metrics" on ad_monthly_metrics
   for select using (auth.role() = 'authenticated');
 
 -- insert/update/delete 정책을 아예 만들지 않았으므로, anon/authenticated 키로는

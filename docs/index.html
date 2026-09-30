@@ -697,6 +697,17 @@
       <section class="kpi-grid" id="weeklyKpiGrid"></section>
     </section>
 
+    <div class="section-divider">월간 보고서 <span class="badge-fixed">광고(Meta) 채널 기준</span></div>
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">리드수 · CTR · CVR · 유효리드율</div>
+          <div class="card-title-sub">Meta 광고 계정(베이스 특허법률사무소) 집행 데이터 × 광고(Instagram/Facebook/Threads 등) 유입 문의만 대상 · CVR = 리드/클릭 · 유효리드율 = 상표·디자인·기타(취급 범위 밖) 제외</div>
+        </div>
+      </div>
+      <div class="table-scroll"><table id="monthlyReportTable"></table></div>
+    </section>
+
   </div>
 
   <div id="viewProgress" style="display:none;">
@@ -1020,6 +1031,7 @@ function initDashboard() {
   var CASES = window.CASE_ROWS || [];
   var STAGE_EVENTS = window.CASE_STAGE_EVENTS || [];
   var REQUEST_STAGE_EVENTS = window.REQUEST_STAGE_EVENTS || [];
+  var AD_METRICS = window.AD_MONTHLY_METRICS || [];
 
   var stageByCase = {};
   STAGE_EVENTS.forEach(function (e) {
@@ -1966,6 +1978,65 @@ function initDashboard() {
       return '<div class="kpi"><div class="kpi-label">' + it.label + '</div><div class="kpi-value font-mono">' + it.cur.toLocaleString() + '건</div>' +
         (it.note ? '<div class="kpi-sub">' + it.note + '</div>' : cmpLine(it.cur, it.prev, { unit: '건' })) + '</div>';
     }).join('');
+  }
+
+  // 월간 보고서 — CTR/클릭수는 Neon/Supabase가 아니라 Meta 광고 계정(베이스 특허법률사무소,
+  // ad_account 1410802980341574)에서 sync/sync.sh가 Graph API로 긁어와 ad_monthly_metrics에
+  // 채워 넣는다(META_ACCESS_TOKEN 시크릿 필요 — 없으면 그 달은 CTR/CVR이 "—"로 빈다).
+  // 리드수·유효리드율은 광고(Meta) 채널로 들어온 문의만 센다 — CTR/클릭 분모와 동일 채널이어야
+  // CVR(리드/클릭)이 의미가 있다(다른 채널 리드까지 섞으면 클릭당 전환율이 부풀려짐).
+  var META_AD_PLATFORMS = ['Instagram', 'Facebook', 'Threads', 'Meta 오디언스 네트워크', 'Meta (기타)'];
+  // "유효 리드" = 특허 상담 가능성이 있는 리드. category가 상표/디자인/기타(취급 범위 밖)인 건은
+  // 처음부터 계약으로 이어질 수 없어 제외한다 — requests.category 실측 분포(2026-09-18 psql 확인):
+  // 특허/기타/상표/디자인/(빈값)/일반 수임/상표,특허.
+  var INVALID_LEAD_CATEGORIES = ['상표', '디자인', '기타'];
+  function isValidLeadCategory(cat) {
+    return !!cat && INVALID_LEAD_CATEGORIES.indexOf(cat) === -1;
+  }
+  function monthKey(dateStr) {
+    var d = parseISO(dateStr);
+    if (!d) return null;
+    return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
+  }
+  function renderMonthlyReport() {
+    var el = document.getElementById('monthlyReportTable');
+    if (!el) return;
+    if (!AD_METRICS.length) {
+      el.innerHTML = '<tbody><tr><td class="empty-state" colspan="8">아직 광고 데이터가 없습니다 — META_ACCESS_TOKEN 시크릿이 설정되면 다음 동기화 때부터 채워집니다.</td></tr></tbody>';
+      return;
+    }
+    var leadsByMonth = {}, validByMonth = {};
+    REQ.forEach(function (r) {
+      if (META_AD_PLATFORMS.indexOf(attributionPlatform(r)) === -1) return;
+      var mk = monthKey(r[REQ_IDX.inquiry]);
+      if (!mk) return;
+      leadsByMonth[mk] = (leadsByMonth[mk] || 0) + 1;
+      if (isValidLeadCategory(r[REQ_IDX.category])) validByMonth[mk] = (validByMonth[mk] || 0) + 1;
+    });
+
+    var rows = AD_METRICS.slice().sort(function (a, b) { return a[0] < b[0] ? 1 : -1; }).map(function (m) {
+      var mk = m[0].slice(0, 7), impressions = m[1] || 0, clicks = m[2] || 0;
+      var leads = leadsByMonth[mk] || 0, valid = validByMonth[mk] || 0;
+      return {
+        mk: mk, impressions: impressions, clicks: clicks, leads: leads, valid: valid,
+        ctr: impressions ? clicks / impressions * 100 : null,
+        cvr: clicks ? leads / clicks * 100 : null,
+        validRate: leads ? valid / leads * 100 : null
+      };
+    });
+
+    var thead = '<thead><tr><th>월</th><th>노출수</th><th>클릭수</th><th>CTR</th><th>리드수</th><th>CVR(리드/클릭)</th><th>유효 리드</th><th>유효리드율</th></tr></thead>';
+    var tbody = '<tbody>' + rows.map(function (r) {
+      return '<tr><td>' + r.mk + '</td>' +
+        '<td class="num font-mono">' + r.impressions.toLocaleString() + '</td>' +
+        '<td class="num font-mono">' + r.clicks.toLocaleString() + '</td>' +
+        '<td class="num font-mono">' + (r.ctr != null ? r.ctr.toFixed(2) + '%' : '—') + '</td>' +
+        '<td class="num font-mono">' + r.leads.toLocaleString() + '건</td>' +
+        '<td class="num font-mono">' + (r.cvr != null ? r.cvr.toFixed(1) + '%' : '—') + '</td>' +
+        '<td class="num font-mono">' + r.valid.toLocaleString() + '건</td>' +
+        '<td class="num font-mono">' + (r.validRate != null ? r.validRate.toFixed(1) + '%' : '—') + '</td></tr>';
+    }).join('') + '</tbody>';
+    el.innerHTML = thead + tbody;
   }
 
   // 최근 3개월 신규 문의 중 결과가 확정된 것(전환/미전환)만으로 전환율을 본다 —
@@ -3312,6 +3383,7 @@ function initDashboard() {
   renderDashboard();
   renderStatsOverview();
   renderRequestStageDwell();
+  renderMonthlyReport();
 }
 </script>
 
@@ -3387,6 +3459,7 @@ function initDashboard() {
   var CASE_COLS = ['id', 'request_id', 'inquiry_at', 'first_contact_at', 'first_quote_at', 'contract_date', 'commission_date', 'filing_official_date', 'registration_official_date', 'ip_type', 'category', 'assignee_id', 'contract_amount', 'comm_count'];
   var STAGE_COLS = ['case_id', 'stage', 'changed_at'];
   var REQUEST_STAGE_COLS = ['request_id', 'from_stage', 'to_stage', 'changed_at'];
+  var AD_METRICS_COLS = ['month', 'impressions', 'clicks', 'spend'];
 
   async function loadDataAndStart() {
     showLoading('데이터를 불러오는 중...');
@@ -3395,10 +3468,12 @@ function initDashboard() {
       var cases = await fetchAll('case_rows', CASE_COLS, 'id');
       var stages = await fetchAll('case_stage_events', STAGE_COLS, 'id');
       var reqStages = await fetchAll('request_stage_events', REQUEST_STAGE_COLS, 'id');
+      var adMetrics = await fetchAll('ad_monthly_metrics', AD_METRICS_COLS, 'month');
       window.FUNNEL_ROWS = toArrayRows(funnel, FUNNEL_COLS);
       window.CASE_ROWS = toArrayRows(cases, CASE_COLS);
       window.CASE_STAGE_EVENTS = toArrayRows(stages, STAGE_COLS);
       window.REQUEST_STAGE_EVENTS = toArrayRows(reqStages, REQUEST_STAGE_COLS);
+      window.AD_MONTHLY_METRICS = toArrayRows(adMetrics, AD_METRICS_COLS);
       showDashboard();
       initDashboard();
     } catch (err) {

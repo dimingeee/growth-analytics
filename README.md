@@ -105,6 +105,7 @@ var SUPABASE_ANON_KEY = 'YOUR-ANON-PUBLIC-KEY';
 
 - `NEON_DATABASE_URL` — bassip_ai_reader 읽기전용 연결 문자열
 - `SUPABASE_DB_URL` — 1번에서 복사해둔 Supabase DB 연결 문자열
+- `META_ACCESS_TOKEN` — (선택, 월간 보고서의 CTR/CVR용) 아래 "월간 보고서 — Meta 광고 연동" 참고
 
 `.github/workflows/sync-data.yml` 이 매일 08:00 KST(UTC 23:00 전날)에 자동으로
 `sync/sync.sh` 를 실행해서 Neon → Supabase로 최신 데이터를 다시 채워 넣습니다.
@@ -126,6 +127,36 @@ psql "$NEON_DATABASE_URL" -c "\d contracts"
 psql "$NEON_DATABASE_URL" -c "\d cases"
 psql "$NEON_DATABASE_URL" -c "\d case_stage_histories"
 ```
+
+### 월간 보고서 — Meta 광고 연동 (2026-10-01 추가)
+
+요약 탭의 "월간 보고서"(리드수/CTR/CVR/유효리드율)는 Neon이 아니라 **Meta 광고 계정**
+(베이스 특허법률사무소, ad_account `1410802980341574`)에서 직접 데이터를 가져옵니다.
+`META_ACCESS_TOKEN` 시크릿을 등록하기 전까지는 이 표가 비어 있고, 나머지 대시보드는
+평소처럼 정상 작동합니다.
+
+**토큰 발급 (한 번만 하면 됨, System User 토큰은 만료가 없습니다):**
+
+1. https://business.facebook.com 에서 이 광고 계정이 속한 비즈니스(Business ID
+   `693181260125342`)의 **Business Settings** 로 들어갑니다.
+2. 왼쪽 메뉴 **Users → System Users** 에서 시스템 사용자를 하나 새로 만들거나
+   (역할은 "Employee"로 충분) 기존 것을 씁니다.
+3. 그 시스템 사용자를 선택 → **Add Assets** 로 이 광고 계정(`베이스 특허법률사무소`)을
+   추가하고 권한을 **"Manage campaigns"**(또는 그 이상)로 부여합니다 — 최소 `ads_read`
+   권한이 있어야 인사이트 조회가 됩니다.
+4. 같은 화면에서 **Generate New Token** 클릭 → 연결된 앱 선택 → 권한에서
+   **`ads_read`** 체크 → 생성된 토큰을 복사합니다.
+5. GitHub 저장소 **Settings → Secrets and variables → Actions** 에 `META_ACCESS_TOKEN`
+   이름으로 등록합니다.
+
+등록 후 다음 동기화(스케줄 또는 Actions 탭에서 수동 `Run workflow`)부터 2026-05월치부터
+지금까지 월별 노출/클릭/지출 데이터가 자동으로 채워지고, 이후 매일 최신 값으로
+갱신됩니다(집행 중인 달은 그 달이 끝날 때까지 값이 계속 바뀝니다 — 정상입니다).
+
+리드수·유효리드율은 **광고(Meta) 채널로 들어온 문의만** 대상으로 계산합니다(CTR/클릭
+분모와 같은 채널이어야 CVR=리드/클릭이 의미가 있기 때문). "유효 리드"는
+`requests.category`가 상표/디자인/기타(취급 범위 밖)가 아닌 건 — 즉 특허 상담으로
+이어질 가능성이 있는 리드만 셉니다.
 
 ## 폴더 구조
 

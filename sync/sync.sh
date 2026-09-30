@@ -29,6 +29,16 @@ alter table request_stage_events enable row level security;
 drop policy if exists "authenticated read request_stage_events" on request_stage_events;
 create policy "authenticated read request_stage_events" on request_stage_events
   for select using (auth.role() = 'authenticated');
+create table if not exists ad_monthly_metrics (
+  month date primary key,
+  impressions bigint,
+  clicks bigint,
+  spend numeric
+);
+alter table ad_monthly_metrics enable row level security;
+drop policy if exists "authenticated read ad_monthly_metrics" on ad_monthly_metrics;
+create policy "authenticated read ad_monthly_metrics" on ad_monthly_metrics
+  for select using (auth.role() = 'authenticated');
 SQL
 
 # neon_export.sql에서 "-- @query: <name>" 블록 하나를 뽑아 순수 SQL만 반환
@@ -78,6 +88,34 @@ sync_table "case_stage_events" "case_stage_events" \
 sync_table "request_stage_events" "request_stage_events" \
   "request_id, from_stage, to_stage, changed_at" \
   "request_id text, from_stage text, to_stage text, changed_at timestamptz"
+
+# Meta 광고 계정(베이스 특허법률사무소) 월별 노출/클릭/지출 — Neon이 아니라 Graph API에서 직접 긁는다.
+# META_ACCESS_TOKEN이 없으면(아직 발급 전) 이 부분만 건너뛰고 나머지 동기화는 계속 진행한다.
+META_AD_ACCOUNT_ID="1410802980341574"
+if [ -n "${META_ACCESS_TOKEN:-}" ]; then
+  echo "== [ad_monthly_metrics] Meta Graph API에서 조회 중 =="
+  set +e
+  meta_json="$(curl -sf "https://graph.facebook.com/v21.0/act_${META_AD_ACCOUNT_ID}/insights?fields=impressions,clicks,spend&time_increment=monthly&date_preset=maximum&access_token=${META_ACCESS_TOKEN}")"
+  meta_status=$?
+  set -e
+  meta_rows="$(echo "${meta_json:-}" | jq -c '[.data[]? | {month: .date_start, impressions: (.impressions // "0" | tonumber), clicks: (.clicks // "0" | tonumber), spend: (.spend // "0" | tonumber)}]' 2>/dev/null)"
+  if [ $meta_status -ne 0 ] || [ -z "$meta_rows" ] || [ "$meta_rows" = "[]" ] || [ "$meta_rows" = "null" ]; then
+    echo "!! [ad_monthly_metrics] Meta Graph API 호출 실패 또는 빈 응답 — 나머지 동기화는 계속 진행합니다. 원본 응답: ${meta_json:-없음}" >&2
+  else
+    echo "== [ad_monthly_metrics] Supabase로 적재 중 =="
+    psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 <<SQL
+begin;
+truncate table ad_monthly_metrics;
+insert into ad_monthly_metrics (month, impressions, clicks, spend)
+select month, impressions, clicks, spend
+from json_to_recordset(\$meta_json\$${meta_rows}\$meta_json\$::json) as x(month date, impressions bigint, clicks bigint, spend numeric);
+commit;
+SQL
+    echo "== [ad_monthly_metrics] 완료 =="
+  fi
+else
+  echo "!! META_ACCESS_TOKEN이 설정돼 있지 않아 ad_monthly_metrics 동기화를 건너뜁니다(README 참고)." >&2
+fi
 
 psql "$SUPABASE_DB_URL" -t -A -c "select '유입 플랫폼(utm_source) 집계: 전체값=' || count(source_platform) || ', 소재(utm_term/content) 있음=' || count(source_creative) from funnel_rows;"
 
